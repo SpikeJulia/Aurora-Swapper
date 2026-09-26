@@ -9,11 +9,11 @@ const html = fs.readFileSync(path.join(__dirname, '../src/renderer/index.html'),
 const js = fs.readFileSync(path.join(__dirname, '../src/renderer/chat.js'), 'utf8');
 const css = fs.readFileSync(path.join(__dirname, '../src/renderer/chat.css'), 'utf8');
 
-test('Chat sits directly under Games and owns a complete composer', () => {
-  assert.ok(html.indexOf('data-view="games"') < html.indexOf('data-view="chat"'));
-  assert.ok(html.indexOf('data-view="chat"') < html.indexOf('data-view="community"'));
-  for (const id of ['chatPlus','chatInput','chatSend','chatFile','chatAttachments','chatReplyPreview']) {
-    assert.match(html, new RegExp(`id="${id}"`));
+test('sidebar keeps the six Aurora pages and does not require chat, community, or overlays', () => {
+  const nav = [...html.matchAll(/<button class="nav-item[^"]*" data-view="([^"]+)"/g)].map((match) => match[1]);
+  assert.deepEqual(nav, ['home', 'games', 'addons', 'history', 'settings', 'about']);
+  for (const gone of ['chat', 'community', 'overlays']) {
+    assert.equal(html.includes(`data-view="${gone}"`), false);
   }
 });
 

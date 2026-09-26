@@ -390,7 +390,7 @@ function createWindow() {
 // it the window is filed under whatever launched it - "Electron" when run from
 // source - instead of under the app.
 
-app.setAppUserModelId('com.rakan.dlss5swapper');
+app.setAppUserModelId('local.aurora.swapper');
 
 // A second copy of the app is not just wasted memory: it writes its own
 // overlay endpoint over the first one's and listens on its own pipe, so the

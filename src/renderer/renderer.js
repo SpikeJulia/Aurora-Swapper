@@ -69,8 +69,8 @@ function show(view) {
   if (view === 'history') renderHistory();
   if (view === 'settings') renderSettings();
   if (view === 'addons') renderAddons();
-  if (view === 'overlays') window.overlayLab.render();
-  if (view === 'community') window.communityUi.render();
+  if (view === 'overlays') window.overlayLab?.render?.();
+  if (view === 'community') window.communityUi?.render?.();
   if (view === 'chat') window.chatUi?.render?.();
 }
 
@@ -936,7 +936,7 @@ async function openSheet(dir, keepLog = false) {
   $('sheetClose').onclick = closeSheet;
   // The same thing the right-click menu offers, put where somebody who has
   // just installed into a game is already looking.
-  $('shareResult').onclick = () => window.communityUi.openReport(sheetGame.dir);
+  $('shareResult').onclick = () => window.communityUi?.openReport?.(sheetGame.dir);
   $('copyJob').onclick = () => copyText([sheetGame.name, sheetGame.dir, '', ...jobLines].join('\n'));
   // Everything an issue report needs, in one file, instead of four asked for
   // one at a time.
@@ -1264,11 +1264,11 @@ async function performGameAction(action, dir) {
         renderRecent();
       }
     } else if (action === 'community') {
-      await window.communityUi.openReport(dir);
+      await window.communityUi?.openReport?.(dir);
     } else if (action === 'communityRemove') {
-      if (await window.communityUi.removeReportFor(dir)) {
+      if (await window.communityUi?.removeReportFor?.(dir)) {
         log(t('menuCommunityRemoved', game.name));
-        if (document.querySelector('.view.active')?.id === 'view-community') await window.communityUi.render();
+        if (document.querySelector('.view.active')?.id === 'view-community') await window.communityUi?.render?.();
         if (sheetGame === game) await openSheet(dir);
       }
     } else if (action === 'hide') {
