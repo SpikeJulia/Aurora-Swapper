@@ -748,49 +748,66 @@ function wireNotes() {
   };
 }
 
-function installOptions(d, pick, dir) {
-  const warning = (d.antiCheatWarning || pick?.antiCheatWarning)
-    ? `<div class="emu-note anti-cheat-warning" role="alert"><b>${t('antiCheatWarningTitle')}</b><span>${t('antiCheatWarning')}</span></div>` : '';
-  if (!pick) return warning;
-  const api = selectedApi(pick, dir);
-  const route = selectedRoute(d, pick, dir, api.api);
-  const routes = routesFor(pick);
-  const opti = route === 'optiscaler';
-  const optiReason = window.installRoutes.optiReason(window.renderingApi.effective(pick, pick.apiOverride || 'auto'));
-  const apiField = `<label class="api-field"><span>${t('fApi')}</span><select id="apiChoice" aria-describedby="apiHint">
-    <option value="auto"${!pick.apiOverride || pick.apiOverride === 'auto' ? ' selected' : ''}>${esc(t('apiAutomatic', pick.apiLabel || t('unknownApi')))}</option>
-    ${window.renderingApi.choices.map(item => `<option value="${item.value}"${pick.apiOverride === item.value ? ' selected' : ''}>${item.label}</option>`).join('')}
-    </select></label>`;
-  const apiHint = `<div class="emu-note" id="apiHint"><span>${t('apiOverrideHint')}</span>${api.api === 'vulkan' && !opti ? `<span>${t('apiVulkanHint')}</span>` : ''}</div>`;
-  // Keep the picker available even when automatic detection yields DX10 or an
-  // unsupported renderer. Otherwise the user cannot correct that detection.
-  if (!routes.length) return `<div class="install-options">${apiField}</div>${notesBox([apiHint, `<div class="emu-note">${t('unsupportedRendererHint')}</div>`, warning], Boolean(warning))}`;
-  return `
-    <div class="install-options">
-      ${apiField}
-      <label><span>${t('fBackend')}</span><select id="backendChoice" aria-describedby="backendHint">
-        <option value="reshade"${opti ? '' : ' selected'}>${t('backendReShade')}</option>
-        <option value="optiscaler"${opti ? ' selected' : ''}${optiReason ? ' disabled' : ''}>OptiScaler DLSS-NR</option>
-      </select></label>
-      ${!opti ? `<label><span>${t('fRoute')}</span><select id="routeChoice">${routes.filter(item => item !== 'optiscaler').map((item) =>
-        `<option value="${item}"${item === route ? ' selected' : ''}>${t(item === 'feeder' ? 'routeFeeder' : item === 'renodx' ? 'routeRenodx' : 'routeNative')}</option>`).join('')}</select></label>
-      ` : ''}
-      ${opti ? `<label><span>${t('fOptiBuild')}</span><select id="optiBuild"></select></label>` : ''}
-    </div>
-    ${notesBox([
-      `<div class="emu-note" id="apiHint"><span>${t('apiOverrideHint')}</span>${api.api === 'vulkan' && !opti ? `<span>${t('apiVulkanHint')}</span>` : ''}</div>`,
-      `<div class="emu-note backend-note" id="backendHint"><span>${t(opti ? 'optiHint' : 'backendHint')}</span>
-        ${optiReason ? `<span>${t(optiReason)}</span>` : ''}
-        ${route === 'native' ? `<span>${t('nativeEffectsHint')}</span>` : ''}
-        ${route === 'renodx' ? `<span>${t('routeRenodxHint')}</span>` : ''}
-        ${opti && (api.api === 'vulkan' || api.label === 'DirectX 11') ? `<span>${t('optiBridgeHint')}</span>` : ''}
-        ${opti && api.api === 'vulkan' ? `<span>${t('optiVulkanHint')}</span>` : ''}
-      </div>`,
-      pick.installIssue ? `<div class="emu-note compatibility-warning" role="alert">${t(pick.installIssue)}</div>` : '',
-      warning,
-      ['ddraw', 'd3d8', 'd3d9'].includes(api.api) ? `<div class="emu-note">${t('legacyRendererHint')}</div>` : '',
-      pick.emulator ? `<div class="emu-note"><b>${esc(pick.emulator.name)} · ${esc(pick.emulator.system)}</b><span>${esc(pick.emulator.hint)}</span><span>${t('emulatorDepthHint')}</span>${pick.emulator.key === 'xenia' ? `<span>${t('xeniaUiHint')}</span>` : ''}</div>` : ''
-    ], Boolean(warning || pick.installIssue))}`;
+// Same seven names as src/aurora/games.js PROXY_FILES. The renderer must not
+// copy matchKnownGame; main returns that preset through auroraPreset.
+const AURORA_PROXIES = ['dxgi.dll', 'winmm.dll', 'version.dll', 'dbghelp.dll', 'd3d12.dll', 'wininet.dll', 'winhttp.dll'];
+
+function pathBase(filePath) {
+  const text = String(filePath || '');
+  const cut = Math.max(text.lastIndexOf('/'), text.lastIndexOf('\\'));
+  return cut >= 0 ? text.slice(cut + 1) : text;
+}
+
+function pathDir(filePath) {
+  const text = String(filePath || '');
+  const cut = Math.max(text.lastIndexOf('/'), text.lastIndexOf('\\'));
+  return cut > 0 ? text.slice(0, cut) : text;
+}
+
+// The store key is the directory passed to aurora-install, not the library folder.
+function auroraGameDirOf(pick, dir) {
+  return pick && pick.path ? pathDir(pick.path) : dir;
+}
+
+function auroraStatusText(status) {
+  if (status === 'installed') return '已安装';
+  if (status === 'incomplete') return '安装未完成';
+  return '未安装';
+}
+
+async function installOptions(d, pick, dir) {
+  const gameDir = auroraGameDirOf(pick, dir);
+  let aurora = { packageRoot: null, records: {} };
+  let preset = null;
+  try {
+    const pending = [window.lab.auroraState ? window.lab.auroraState() : Promise.resolve(aurora)];
+    if (window.lab.auroraPreset) pending.push(window.lab.auroraPreset(pathBase(dir), pick && pick.path ? pathBase(pick.path) : ''));
+    const [state, known] = await Promise.all(pending);
+    if (state && typeof state === 'object') aurora = state;
+    preset = known || null;
+  } catch { /* The sheet still opens when the preset lookup fails. */ }
+  const record = aurora.records && aurora.records[gameDir] ? aurora.records[gameDir] : null;
+  const status = record && record.status ? record.status : '';
+  const proxy = (record && AURORA_PROXIES.includes(record.proxy) && record.proxy)
+    || (preset && AURORA_PROXIES.includes(preset.proxy) && preset.proxy)
+    || 'dxgi.dll';
+  const choices = AURORA_PROXIES.map((name) =>
+    `<option value="${esc(name)}"${name === proxy ? ' selected' : ''}>${esc(name)}</option>`).join('');
+  const repair = status === 'installed'
+    ? '<p class="api-field" id="auroraRepairHint">若启动器验证或更新过游戏，点修复。</p>'
+    : '';
+  const note = preset && preset.note ? `<p class="api-field" id="auroraNote">${esc(preset.note)}</p>` : '';
+  return {
+    html: `<div class="install-options">
+      <p class="api-field" id="auroraStatus">${esc(auroraStatusText(status))}</p>
+      ${repair}
+      <select id="proxyChoice">${choices}</select>
+      <input id="auroraGameDir" value="${esc(gameDir)}" spellcheck="false">
+      ${note}
+    </div>`,
+    packageRoot: aurora.packageRoot == null ? null : aurora.packageRoot,
+    record
+  };
 }
 
 // A newer release exists, said once, in the corner. The link is the same
@@ -884,8 +901,9 @@ async function openSheet(dir, keepLog = false) {
   const pick = chosenExe(d, dir);
   const inGameDlss = (d.currentDlss && d.currentDlss.version) || null;
   const showExeFact = d.exes.length < 2;
-  // Filled in once the sheet is on screen, so the sheet never waits on the network.
-  queueMicrotask(() => fillSheetCommunity(g, dir));
+
+  const auroraOptions = await installOptions(d, pick, dir);
+  if (sheetGame !== g) return;
 
   $('sheet').innerHTML = `
     <div class="hero${hero ? '' : ' empty'}">
@@ -907,36 +925,32 @@ async function openSheet(dir, keepLog = false) {
 
       ${exePicker(d, dir)}
       <div class="sheet-community" id="sheetCommunity" hidden></div>
-      ${installOptions(d, pick, dir)}
+      ${auroraOptions.html}
 
       <div class="specs">
         ${showExeFact && pick ? spec(t('fExe'), esc(pick.rel.split(/[\/]/).pop()), null, pick.rel) : ''}
         ${pick ? spec(t('fArchitecture'), `${pick.bitness || '?'}-bit`) : ''}
         ${spec(t('fApi'), esc((pick && selectedApi(pick, dir).label) || reasonText(d.reason) || '—'), pick && selectedApi(pick, dir).api === 'dxgi' ? 'on' : 'off')}
-        ${spec(t('installedBackend'), esc(d.installedRoute === 'optiscaler' ? 'OptiScaler DLSS-NR' : d.installedRoute ? 'ReShade' : t('none')), d.installedRoute ? 'on' : 'off')}
-        ${spec('DLSS', pick && selectedRoute(d, pick, dir) === 'optiscaler' ? esc(inGameDlss || t('none')) : dlssValue(inGameDlss, d.newDlss, upToDate))}
-        ${d.optiscaler ? spec('OptiScaler', esc(d.optiscaler.installed ? d.optiscaler.version : t('notInstalled')), d.optiscaler.installed ? 'on' : 'off') : ''}
+        ${spec('DLSS', dlssValue(inGameDlss, d.newDlss, upToDate))}
         ${spec(t('fAddon'), esc(d.addon ? t('installed') : t('notPresent')), d.addon ? 'on' : 'off')}
-        ${spec(t('fReShade'), esc(d.reshade.installed
-            ? d.reshade.version + (d.reshade.addonSupport ? ' + ' + t('addonShort') : '')
-            : t('notInstalled')), d.reshade.installed ? 'on' : 'off')}
       </div>
 
       ${d.files.length ? `<div class="filelist">${d.files.map((f) =>
         `<div class="filerow"><span class="f">${esc(f.rel)}</span><span class="v">${esc(f.version || '—')}</span></div>`).join('')}</div>` : ''}
 
       <div class="sheet-actions">
-        <button class="btn-install" id="doInstall"${d.ok && pick && !pick.installIssue && routesFor(pick).length ? '' : ' disabled'}>${installLabel(d, pick, dir)}</button>
-        <button class="btn-restore" id="doRestore"${d.hasBackup ? '' : ' disabled'}>${t('restore')}</button>
+        <button class="btn-install" id="doInstall"${auroraOptions.packageRoot == null ? ' disabled' : ''}>安装 Aurora</button>
+        <button class="btn-restore" id="doRepair"${auroraOptions.record && auroraOptions.record.status ? '' : ' disabled'}>修复运行库</button>
+        <button class="btn-restore" id="doRestore"${auroraOptions.record && auroraOptions.record.status ? '' : ' disabled'}>还原原始文件</button>
+        <button class="btn-restore" id="doOpen">打开游戏目录</button>
       </div>
-      <div class="job-toolbar"><button class="ghost sm ${window.communityUi?.reportFor?.(dir) ? 'shared' : 'accent'}" id="shareResult">${window.communityUi?.reportFor?.(dir) ? t('menuCommunityEdit') : t('menuCommunity')}</button><button class="ghost sm" id="copyJob"${jobLines.length ? '' : ' disabled'}>${t('copyLog')}</button><button class="ghost sm" id="saveDiag">${t('saveDiagnostics')}</button></div>
+      <div class="job-toolbar"><button class="ghost sm" id="copyJob"${jobLines.length ? '' : ' disabled'}>${t('copyLog')}</button><button class="ghost sm" id="saveDiag">${t('saveDiagnostics')}</button></div>
       <div class="job" id="job" role="status" aria-live="polite">${esc(jobLines.join('\n') || t('jobReady'))}</div>
     </div>`;
 
+  // Filled in once the sheet is on screen, so the sheet never waits on the network.
+  queueMicrotask(() => fillSheetCommunity(g, dir));
   $('sheetClose').onclick = closeSheet;
-  // The same thing the right-click menu offers, put where somebody who has
-  // just installed into a game is already looking.
-  $('shareResult').onclick = () => window.communityUi?.openReport?.(sheetGame.dir);
   $('copyJob').onclick = () => copyText([sheetGame.name, sheetGame.dir, '', ...jobLines].join('\n'));
   // Everything an issue report needs, in one file, instead of four asked for
   // one at a time.
@@ -951,48 +965,10 @@ async function openSheet(dir, keepLog = false) {
   };
   wireNotes();
   wireExePicker(dir);
-  const apiSelect = $('apiChoice');
-  if (apiSelect) apiSelect.onchange = async () => {
-    const value = apiSelect.value;
-    document.querySelectorAll('#sheet select, #doInstall, #doRestore, #exeSelect').forEach(e => { e.disabled = true; });
-    let result;
-    try { result = await window.lab.setApiOverride(dir, pick.path, value); }
-    catch { result = { ok: false, code: 'errApiSave' }; }
-    if (!result?.ok) jobLog(t(result?.code || 'errApiSave'));
-    if (sheetGame?.dir === dir) {
-      await openSheet(dir, true);
-      $('apiChoice')?.focus();
-    }
-  };
-  // Filled in after the sheet exists - it was being written before, when
-  // $('optiBuild') was still null, so the select rendered and stayed empty.
-  // Only one game at a time is ever pinned to an older build, and only to one
-  // the app already carries, so the list comes from the main process (#238).
-  const buildSelect = $('optiBuild');
-  if (buildSelect) {
-    window.lab.optiscalerBuilds(dir).then(({ builds, current }) => {
-      if ($('optiBuild') !== buildSelect) return;   // the sheet moved on
-      buildSelect.innerHTML = builds.map((v, i) =>
-        `<option value="${esc(v)}"${v === current ? ' selected' : ''}>${esc(v)}${i === 0 ? ` · ${t('optiBuildCurrent')}` : ''}</option>`).join('');
-      buildSelect.onchange = async () => {
-        buildSelect.disabled = true;
-        try { await window.lab.setOptiscalerBuild(dir, buildSelect.value); }
-        catch (error) { log(error.message); }
-        finally { buildSelect.disabled = false; }
-      };
-    }).catch(() => buildSelect.closest('label')?.remove());
-  }
-  const routeSelect = $('routeChoice');
-  if (routeSelect) routeSelect.onchange = () => { routeChoice.set(dir, routeSelect.value); openSheet(dir, true); };
-  const backendSelect = $('backendChoice');
-  if (backendSelect) backendSelect.onchange = () => {
-    const available = routesFor(pick).filter(route => route !== 'optiscaler');
-    const previous = available.includes(d.previousReShadeRoute) ? d.previousReShadeRoute : d.recommendedRoute;
-    routeChoice.set(dir, backendSelect.value === 'optiscaler' ? 'optiscaler' : available.includes(previous) ? previous : available[0]);
-    openSheet(dir, true);
-  };
-  $('doInstall').onclick = () => runJob('install', dir);
-  $('doRestore').onclick = () => runJob('restore', dir);
+  $('doInstall').onclick = () => runAurora('install', dir);
+  $('doRepair').onclick = () => runAurora('check', dir);
+  $('doRestore').onclick = () => runAurora('restore', dir);
+  $('doOpen').onclick = () => window.lab.open($('auroraGameDir').value);
 }
 
 function wireExePicker(dir) {
@@ -1014,6 +990,100 @@ function wireExePicker(dir) {
     routeChoice.delete(dir);
     openSheet(dir);
   };
+}
+
+function paintAuroraStatus(record, packageRoot) {
+  const status = record && record.status ? record.status : '';
+  const node = $('auroraStatus');
+  if (node) node.textContent = auroraStatusText(status);
+  const hint = $('auroraRepairHint');
+  if (status === 'installed') {
+    if (!hint && node) {
+      const line = document.createElement('p');
+      line.id = 'auroraRepairHint';
+      line.className = 'api-field';
+      line.textContent = '若启动器验证或更新过游戏，点修复。';
+      node.insertAdjacentElement('afterend', line);
+    }
+  } else if (hint) hint.remove();
+  if ($('doInstall') && packageRoot !== undefined) $('doInstall').disabled = packageRoot == null;
+  const missing = !status;
+  if ($('doRepair')) $('doRepair').disabled = missing;
+  if ($('doRestore')) $('doRestore').disabled = missing;
+  for (const id of ['doOpen', 'proxyChoice', 'auroraGameDir', 'sheetClose', 'exeSelect']) {
+    const el = $(id);
+    if (el) el.disabled = false;
+  }
+}
+
+function auroraJobText(result) {
+  const parts = [];
+  if (result && result.unconfirmedClose) parts.push('未能确认游戏已关闭。');
+  if (result && result.output) parts.push(result.output);
+  else if (result && result.error) parts.push(result.error);
+  return parts.join('\n');
+}
+
+// Sheet actions call Aurora IPC. runJob stays for the old context-menu restore.
+async function runAurora(kind, dir) {
+  if (jobRunning) return;
+  const gameDir = ($('auroraGameDir') && $('auroraGameDir').value) || dir;
+  const proxy = ($('proxyChoice') && $('proxyChoice').value) || 'dxgi.dll';
+  const pick = sheetDetails ? chosenExe(sheetDetails, dir) : null;
+  const exePath = pick && pick.path ? pick.path : null;
+  const locked = {
+    install: $('doInstall') ? $('doInstall').disabled : true,
+    repair: $('doRepair') ? $('doRepair').disabled : true,
+    restore: $('doRestore') ? $('doRestore').disabled : true
+  };
+  jobRunning = true;
+  for (const id of ['doInstall', 'doRepair', 'doRestore', 'doOpen', 'proxyChoice', 'auroraGameDir', 'sheetClose', 'exeSelect']) {
+    const el = $(id);
+    if (el) el.disabled = true;
+  }
+  let result = null;
+  try {
+    if (kind === 'install') {
+      result = await window.lab.auroraInstall(gameDir, proxy, false, exePath);
+      if (result && result.error === 'proxy-exists' && window.confirm('目标代理 DLL 已存在，是否覆盖？')) {
+        result = await window.lab.auroraInstall(gameDir, proxy, true, exePath);
+      }
+    } else if (kind === 'check') {
+      result = await window.lab.auroraCheck(gameDir, exePath);
+    } else if (kind === 'restore') {
+      result = await window.lab.auroraRestore(gameDir, exePath);
+    }
+  } catch (error) {
+    result = { error: error.message || String(error) };
+  }
+  const text = auroraJobText(result);
+  jobLines = text ? text.split('\n') : [];
+  const job = $('job');
+  if (job) job.textContent = text;
+  let record;
+  let packageRoot;
+  try {
+    const fresh = await window.lab.auroraState();
+    packageRoot = fresh ? fresh.packageRoot : null;
+    record = fresh && fresh.records ? fresh.records[gameDir] || null : null;
+  } catch {
+    record = undefined;
+    packageRoot = undefined;
+  }
+  jobRunning = false;
+  if (!(sheetGame && sheetGame.dir === dir)) return;
+  if (record === undefined) {
+    for (const id of ['doOpen', 'proxyChoice', 'auroraGameDir', 'sheetClose', 'exeSelect']) {
+      const el = $(id);
+      if (el) el.disabled = false;
+    }
+    if ($('doInstall')) $('doInstall').disabled = locked.install;
+    if ($('doRepair')) $('doRepair').disabled = locked.repair;
+    if ($('doRestore')) $('doRestore').disabled = locked.restore;
+    return;
+  }
+  // Status comes from the stored record, not from a failed check's return value.
+  paintAuroraStatus(record, packageRoot);
 }
 
 async function runJob(kind, dir) {

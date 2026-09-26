@@ -43,6 +43,7 @@ const { spawn, execFile } = require('child_process');
 const { validatePackage } = require('./src/aurora/package');
 const { installGame, checkGame, restoreGame } = require('./src/aurora/install');
 const { readStore, writeStore } = require('./src/aurora/store');
+const { matchKnownGame } = require('./src/aurora/games');
 const gameMenu = require('./src/core/game-menu');
 const { CommunityClient, ADMIN_TOKEN_PATTERN } = require('./src/community-client');
 const { AdminVault } = require('./src/admin-vault');
@@ -1985,6 +1986,11 @@ ipcMain.handle('aurora-state', () => {
   const packageInfo = store.packageRoot ? validatePackage(store.packageRoot) : { ok: false };
   return { packageRoot: store.packageRoot, package: packageInfo, records: store.records };
 });
+
+ipcMain.handle('aurora-preset', (_event, dirName, exeName) => matchKnownGame({
+  dirName: typeof dirName === 'string' ? dirName : '',
+  exeName: typeof exeName === 'string' ? exeName : ''
+}));
 
 ipcMain.handle('aurora-choose-package', async () => {
   const res = await dialog.showOpenDialog(win, { properties: ['openDirectory'] });

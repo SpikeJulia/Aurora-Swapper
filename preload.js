@@ -97,6 +97,7 @@ contextBridge.exposeInMainWorld('lab', {
   auroraInstall: (gameDir, proxy, overwriteConfirmed, exePath) => ipcRenderer.invoke('aurora-install', gameDir, proxy, overwriteConfirmed, exePath),
   auroraCheck: (gameDir, exePath) => ipcRenderer.invoke('aurora-check', gameDir, exePath),
   auroraRestore: (gameDir, exePath) => ipcRenderer.invoke('aurora-restore', gameDir, exePath),
+  auroraPreset: (dirName, exeName) => ipcRenderer.invoke('aurora-preset', dirName, exeName),
   addons: () => ipcRenderer.invoke('addons'),
   addonToggle: (file, on) => ipcRenderer.invoke('addon-toggle', file, on),
   addonPick: () => ipcRenderer.invoke('addon-pick'),
