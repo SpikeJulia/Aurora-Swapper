@@ -82,7 +82,7 @@ class HistoryStore {
       try {
         const row = JSON.parse(line);
         if (typeof row.id === 'string' && typeof row.dir === 'string' && path.isAbsolute(row.dir) &&
-            validDate(row.date) && ['install', 'restore', 'recovery'].includes(row.action)) rows.set(row.id, row);
+            validDate(row.date) && ['install', 'restore', 'recovery', 'repair'].includes(row.action)) rows.set(row.id, row);
       } catch { /* A truncated final write must not lose older operations. */ }
     }
     return [...rows.values()];

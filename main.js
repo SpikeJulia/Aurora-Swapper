@@ -39,6 +39,10 @@ const featureI18n = require('./src/shared/feature-i18n');
 const featureText = (key, ...args) => featureI18n.t(loadState().lang, key, ...args);
 const vulkanLayer = require('./src/core/vulkan-layer');
 const { HistoryStore, knownFolders, fromManifests } = require('./src/core/history');
+const { spawn, execFile } = require('child_process');
+const { validatePackage } = require('./src/aurora/package');
+const { installGame, checkGame, restoreGame } = require('./src/aurora/install');
+const { readStore, writeStore } = require('./src/aurora/store');
 const gameMenu = require('./src/core/game-menu');
 const { CommunityClient, ADMIN_TOKEN_PATTERN } = require('./src/community-client');
 const { AdminVault } = require('./src/admin-vault');
@@ -1887,3 +1891,176 @@ ipcMain.handle('restore', (event, dir) => exclusiveMutation(async () => {
     return { ok: false, code: err.code, message: err.message };
   }
 }));
+
+// ---------- aurora ----------
+// Aurora install does not call src/core/apply.js. Copy, proxy rename, and
+// rollback stay inside src/aurora.
+
+function auroraStoreFile() {
+  return path.join(app.getPath('userData'), 'aurora-store.json');
+}
+
+function auroraBackupDir(gameDir) {
+  const hash = crypto.createHash('sha256').update(path.resolve(gameDir).toLowerCase()).digest('hex');
+  return path.join(app.getPath('userData'), 'aurora-backups', hash);
+}
+
+function loadAurora() {
+  const data = readStore(auroraStoreFile());
+  if (!data || typeof data !== 'object' || Array.isArray(data)) return { packageRoot: null, records: {} };
+  return {
+    packageRoot: typeof data.packageRoot === 'string' ? data.packageRoot : null,
+    records: data.records && typeof data.records === 'object' && !Array.isArray(data.records) ? data.records : {}
+  };
+}
+
+function saveAurora(store) {
+  writeStore(auroraStoreFile(), store);
+}
+
+function runPowershell(command) {
+  if (process.platform !== 'win32') {
+    return Promise.resolve({ code: 1, stdout: '', stderr: 'PowerShell only runs on Windows' });
+  }
+  return new Promise((resolve) => {
+    const child = spawn(command.file, command.args, { windowsHide: true });
+    let stdout = '';
+    let stderr = '';
+    let settled = false;
+    const finish = (code) => {
+      if (settled) return;
+      settled = true;
+      resolve({ code, stdout, stderr });
+    };
+    if (child.stdout) child.stdout.on('data', (chunk) => { stdout += chunk; });
+    if (child.stderr) child.stderr.on('data', (chunk) => { stderr += chunk; });
+    child.on('error', (error) => {
+      stderr += error.message;
+      finish(1);
+    });
+    child.on('close', (code) => finish(code));
+  });
+}
+
+// enabledAddons() already returns enabled addon paths for the old installer.
+// This one is the file list Aurora copies after a successful install.
+function enabledAuroraAddons() {
+  const state = loadState();
+  const enabled = new Set(state.addons || (state.addon ? [state.addon] : []));
+  return addonLibrary()
+    .filter(row => enabled.has(row.path))
+    .map(row => ({
+      name: row.name || row.label || path.basename(row.path),
+      files: [{ rel: path.basename(row.path), from: row.path }]
+    }));
+}
+
+function queryGameRunning(exePath) {
+  if (process.platform !== 'win32' || !exePath) return Promise.resolve(null);
+  const image = path.basename(exePath);
+  return new Promise((resolve) => {
+    execFile('tasklist', ['/FI', `IMAGENAME eq ${image}`, '/NH'], { windowsHide: true }, (err, stdout) => {
+      if (err) return resolve(null);
+      resolve(stdout.toLowerCase().includes(image.toLowerCase()));
+    });
+  });
+}
+
+function recordAurora(gameDir, record, action) {
+  try {
+    history().record(gameDir, {
+      route: 'aurora',
+      date: new Date().toISOString(),
+      added: Array.isArray(record.files) ? record.files.length : 0,
+      replaced: 0
+    }, action, path.basename(gameDir));
+  } catch (error) {
+    return error.message;
+  }
+  return null;
+}
+
+ipcMain.handle('aurora-state', () => {
+  const store = loadAurora();
+  const packageInfo = store.packageRoot ? validatePackage(store.packageRoot) : { ok: false };
+  return { packageRoot: store.packageRoot, package: packageInfo, records: store.records };
+});
+
+ipcMain.handle('aurora-choose-package', async () => {
+  const res = await dialog.showOpenDialog(win, { properties: ['openDirectory'] });
+  if (res.canceled || !res.filePaths || !res.filePaths[0]) return { ok: false, cancelled: true };
+  const checked = validatePackage(res.filePaths[0]);
+  if (!checked.ok) return { ok: false, reason: checked.reason };
+  const store = loadAurora();
+  store.packageRoot = checked.root;
+  saveAurora(store);
+  return { ok: true, packageRoot: store.packageRoot };
+});
+
+ipcMain.handle('aurora-install', async (_event, gameDir, proxy, overwriteConfirmed, exePath) => {
+  const store = loadAurora();
+  const record = store.records[gameDir] || null;
+  const result = await installGame({
+    packageRoot: store.packageRoot,
+    gameDir,
+    backupDir: auroraBackupDir(gameDir),
+    proxy,
+    record,
+    overwriteConfirmed,
+    addons: enabledAuroraAddons(),
+    gameRunning: await queryGameRunning(exePath)
+  }, { fs, path, runner: runPowershell });
+  if (result.record) {
+    const saved = { ...result.record, status: result.ok ? 'installed' : (result.status || 'incomplete') };
+    const fresh = loadAurora();
+    fresh.records[gameDir] = saved;
+    saveAurora(fresh);
+    result.record = saved;
+  }
+  if (result.ok) {
+    const warning = recordAurora(gameDir, result.record, 'install');
+    if (warning) result.historyWarning = warning;
+  }
+  return result;
+});
+
+ipcMain.handle('aurora-check', async (_event, gameDir, exePath) => {
+  const store = loadAurora();
+  const record = store.records[gameDir] || null;
+  if (record) {
+    const pkg = validatePackage(store.packageRoot);
+    if (!pkg.ok) return { ok: false, error: 'package-invalid', reason: pkg.reason };
+  }
+  const result = await checkGame({
+    gameDir,
+    record,
+    gameRunning: await queryGameRunning(exePath)
+  }, { fs, path, runner: runPowershell });
+  // A failed check must not replace an installed record with incomplete.
+  if (!result.ok) return result;
+  const fresh = loadAurora();
+  const prior = fresh.records[gameDir];
+  if (!prior) return result;
+  const saved = { ...prior, status: 'installed' };
+  fresh.records[gameDir] = saved;
+  saveAurora(fresh);
+  const warning = recordAurora(gameDir, saved, 'repair');
+  if (warning) result.historyWarning = warning;
+  return result;
+});
+
+ipcMain.handle('aurora-restore', async (_event, gameDir, exePath) => {
+  const store = loadAurora();
+  const record = store.records[gameDir] || null;
+  const result = await restoreGame({
+    gameDir,
+    record,
+    gameRunning: await queryGameRunning(exePath)
+  }, { fs, path, runner: runPowershell });
+  if (result.ok) {
+    const fresh = loadAurora();
+    delete fresh.records[gameDir];
+    saveAurora(fresh);
+  }
+  return result;
+});
