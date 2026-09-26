@@ -556,7 +556,7 @@ async function renderSettings() {
     };
   }
   $('setReset').onclick = async () => { await window.lab.reset(); load(); };
-  await window.communityUi.renderProfile($('settings'));
+  await window.communityUi?.renderProfile?.($('settings'));
 }
 
 // ---------------- loading ----------------
