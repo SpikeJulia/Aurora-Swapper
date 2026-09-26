@@ -1,0 +1,180 @@
+# Aurora Swapper 设计
+
+日期：2026-09-26
+
+给 OptiScaler Aurora 做一个 Swapper 式的 Windows 桌面程序。用它完成进游戏之前的安装、修复和还原。不合并 Aurora 源码，也不在游戏里代替 Insert 面板。
+
+## 目标
+
+用户在 Windows 上打开这个程序，从 Steam 库或手动添加的文件夹里选中游戏，指定本机已解压的 Aurora 发布包，然后安装、修复运行库或还原。Mac 只用来开发和用假目录测试。
+
+第一版做完的标准：在 Windows 上对一个假游戏目录，能完成安装、修复、还原三次操作；还原失败时游戏目录里的 Aurora 文件还在；指到 `.7z` 或 Aurora 源码树时不能安装。
+
+## 非目标
+
+- 不编译、不修改、不内置 Aurora 的 C++ 源码。
+- 不从 GitHub 下载 Aurora。第一版只接受本机已解压的发布目录。
+- 不运行会提问的 `setup_windows.bat`。
+- 不实现 Feeder、RenoDX、Multipass、模拟器、dgVoodoo、社区、聊天、F8 叠层。
+- 不扫描 Epic、GOG、Xbox，不全盘扫描。
+- 不把游戏内的 Insert 调参搬到桌面。巫师 3 那套必须进游戏保存再重启的步骤只显示文字。
+- 不新做 38 种语言。
+
+## 来源和许可证
+
+以 [DLSS5-Swapper](https://github.com/rakanki911/DLSS5-Swapper) 2.2.7 的源码为底，保留其 MIT 许可证和 Rakan Alkhaldi 的署名。删掉不需要的页面和安装路线，换上 Aurora 的安装流程。
+
+Aurora 是 GPL-3.0。它的发布包由用户在设置里指定，不放进本仓库，不打进安装包。关于页写明：界面代码 MIT，Aurora 本体 GPL。
+
+## 运行和开发
+
+- 成品跑在 Windows 10/11 x64。
+- 在 Mac 上开发。Electron 窗口可以在 Mac 上打开。
+- 调用 `runtime_sync.ps1` 只在 `process.platform === 'win32'` 时发生。
+- Mac 上的测试使用临时目录，断言拷贝结果、代理 DLL 文件名，以及准备传给 PowerShell 的参数。不在 Mac 上执行 PowerShell。
+
+## 界面
+
+侧栏六页，沿用 Swapper 现有的布局和样式。拿掉聊天、社区、Overlay。
+
+### 主页
+
+- Aurora 发布包是否已指定且有效。
+- 库中已安装与未安装的数量。
+- 最近操作过的游戏，可进入游戏详情。
+
+### 游戏
+
+- 读取 Steam 的 `libraryfolders.vdf`，再加上手动添加的文件夹。
+- 可以按名称搜索。
+- 安装目标是检测到的游戏 exe 所在目录，不是 Steam 库根目录。详情页可以改这个目录。
+- 已知游戏用游戏目录名和 exe 文件名做不区分大小写的包含匹配。匹配词就是下表里的中文名和英文名。对上任一词即使用该行的预选代理和说明。
+- 点进一款游戏后，详情只有这些内容：
+  - 状态只有三种：未安装、已安装、安装未完成。程序不猜测启动器是否覆盖过运行库。已安装时固定显示一句提示：若启动器验证或更新过游戏，点修复。
+  - 代理 DLL 下拉。可选 `dxgi.dll`、`winmm.dll`、`version.dll`、`dbghelp.dll`、`d3d12.dll`、`wininet.dll`、`winhttp.dll`。同一款游戏同时只保留一个。
+  - 安装。游戏进程在运行时按钮不可用。
+  - 修复运行库。
+  - 还原原始文件。
+  - 打开游戏目录。
+  - 已知游戏说明。只对下表里的游戏显示。
+
+| 游戏 | 预选代理 | 说明里要写的话 |
+|---|---|---|
+| 异环 / Neverness to Everness | `winmm.dll` | `dxgi.dll` 可能被报非法模块。`Run inside the upscaler` 不建议开。 |
+| 鬼武者：剑之道 / Onimusha | `dxgi.dll` | `Run inside the upscaler` 会花屏，保持关。 |
+| 巫师 3 / The Witcher 3 | `dxgi.dll` | 游戏内超分选 DLSS，关掉原生帧生成。进游戏后 Insert：FG Input = OptiFG (Upscaler)，FG Output = DLSSG，FG Nvngx Replacement = None (Real DLSSG)。保存后完全退出再开，进场景后再开 DLSSG，选 2X–6X。 |
+| 黎明行者之血 / The Blood of Dawnwalker | `dxgi.dll` | DLSS 5 和 6X 可以同时开。 |
+
+其他游戏默认 `dxgi.dll`，不显示专用说明。
+
+### 插件
+
+保留 Swapper 的附加组件页。用户自己添加要跟 Aurora 一起拷进游戏目录的额外文件。第一版没有内置组件。
+
+安装 Aurora 成功之后再拷插件。插件里的文件名若与本次要写入的 Aurora 文件重名，拒绝这一份插件，不覆盖。
+
+### 历史
+
+记录安装、修复、还原。每条包含时间、游戏、动作、结果。可以整段复制。
+
+### 设置
+
+- Aurora 发布包目录。指定一次，全局共用。
+- Steam 库位置。默认识别，可以改。
+- 手动添加的游戏文件夹。可以移除。
+
+界面默认中文。保留 Swapper 已有的英文字符串作回退。不为其余语言补翻译，新文案只写中文。
+
+### 关于
+
+说明这是 Aurora 的安装界面，保留 Swapper 原作者署名，并写上 MIT 与 GPL 的区分。
+
+## 发布包是否有效
+
+设置里的路径同时满足下面三条才算有效，否则安装和修复不可用，并在设置页说明原因：
+
+- 是一个已解压的目录，不是 `.7z` 或其他压缩包。
+- 目录里能找到 `OptiScaler.dll` 和 `runtime_sync.ps1`。
+- 目录里没有 `OptiScaler.sln`。有它说明指到了源码树，不是发布包。
+
+`Check_DLSS_Runtime.bat` 可以随发布包一起拷贝，但程序不依赖它。修复直接调用 `runtime_sync.ps1 -Mode Check`。
+
+## 安装
+
+安装前：
+
+- 发布包必须有效。
+- 游戏 exe 目录必须已确定。
+- 该游戏的进程没有在运行。Windows 上按 exe 文件名检查。查不到时仍允许安装，但详情页提示未能确认游戏已关闭。
+- 若目标代理 DLL 已存在，且不是本程序上次安装留下的文件，先询问是否覆盖。用户拒绝则中止，不改目录。
+
+安装动作，按顺序，任何一步失败就停止：
+
+1. 把本次将要覆盖或新增的路径记入该游戏的安装记录。记录写在程序自己的数据目录，不写进游戏目录。
+2. 将发布包中的文件拷进游戏 exe 目录，跳过 `OptiScaler.sln`。`OptiScaler.dll` 先不拷成这个名字。
+3. 在游戏目录把这份 DLL 落成用户选中的代理名。若本程序上次安装了另一个代理名，只删除记录里的那一个旧代理，不删除来源不明的同名 DLL。
+4. 仅在 Windows 上执行：
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File "<游戏目录>\runtime_sync.ps1" -Mode Install -InstallDir "<游戏目录>"
+```
+
+5. 退出码为 0 后，再拷贝未发生重名冲突的插件。插件拷贝失败不撤回 Aurora，状态仍为已安装，历史里记下插件失败。
+6. Aurora 安装成功后写入历史。状态变为已安装。
+
+拷贝或改名失败：按安装记录撤回这一次已经写入的文件，不调用 `Install`。已有备份按记录放回。
+
+`Install` 退出码非 0：不撤回已经拷入的文件，不拷插件。状态为「安装未完成」，详情页展示脚本输出，并提供还原。
+
+## 修复
+
+仅当状态是已安装或安装未完成，且发布包仍然有效时可用。游戏进程在运行时不可用。
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File "<游戏目录>\runtime_sync.ps1" -Mode Check -InstallDir "<游戏目录>"
+```
+
+退出码非 0 只展示输出，不删除文件。退出码为 0 则把状态更新为已安装。
+
+## 还原
+
+游戏进程在运行时不可用。
+
+1. 游戏目录里有 `runtime_sync.ps1` 时，执行 `-Mode Restore`。退出码非 0：停止。不删除任何文件。历史记为还原失败。
+2. 没有 `runtime_sync.ps1`，但游戏目录里仍有 `OptiScaler\RuntimeSync`：停止，不删除任何文件。详情页说明要先放回 `runtime_sync.ps1` 再还原。
+3. 只有 Restore 退出码为 0，或两者都不存在时，才删除该游戏安装记录里列出的文件。记录之外的文件不动。
+4. 第 3 步完成后，清除该游戏的安装记录，状态变为未安装，写入历史。
+
+## 组件
+
+在 Swapper 的 Electron 壳上改，不新起一套界面框架。
+
+| 部分 | 做法 |
+|---|---|
+| `main.js`、`preload.js`、游戏库页面、样式 | 保留，删掉聊天、社区、Overlay 的入口和脚本 |
+| Steam 扫描、游戏 exe 判断、历史、文件记录 | 保留能用的部分，去掉 Feeder 和其他路线的分支 |
+| 新增 Aurora 安装模块 | 只负责校验发布包、拷贝、改名、拼 PowerShell 参数、按记录撤回 |
+| 已知游戏表 | 一份静态数据：匹配名、预选代理、说明文字 |
+| 插件页 | 保留添加和列出。安装流程只消费「启用的插件文件列表」 |
+
+程序数据放在 Electron 的 `userData` 目录：发布包路径、手动文件夹、每款游戏的 exe 目录修正、安装记录、历史。
+
+## 测试
+
+Mac 上用 Node 测试 Aurora 安装模块，不启动 Electron，也不调用 PowerShell：
+
+- 有效目录、`.7z`、含 `OptiScaler.sln` 的目录，三种校验结果。
+- 拷贝后游戏目录里只有一个代理 DLL，名字与选择一致。
+- 更换代理时，只去掉记录中的旧代理。
+- 目标代理已存在且不在记录中时，不覆盖，除非测试显式传入确认。
+- 拷贝中途失败会撤回已写入的文件。
+- 插件重名被拒绝，Aurora 文件保持不变。
+- 三种模式生成的 PowerShell 参数分别是 `Install`、`Check`、`Restore`，且 `-InstallDir` 是游戏 exe 目录。
+- `Restore` 被设定为失败时，记录中的文件仍在。
+- 没有 `runtime_sync.ps1` 但存在 `OptiScaler/RuntimeSync` 时，不删除记录中的文件。
+
+Windows 上的人工检查不纳入自动测试：用一个含假 exe 的目录和一份最小发布包（含 `OptiScaler.dll` 与一个只打印参数就退出的 `runtime_sync.ps1`）走一遍安装、修复、还原。真 Aurora 包和真游戏由用户在自己的 Windows 机器上试。
+
+## 名称
+
+程序显示名：Aurora Swapper。包名和 `appId` 不沿用 Swapper 的 `com.rakan.dlss5swapper`。
