@@ -47,10 +47,14 @@ async function installGame(input, deps) {
       addonFailure = addon.name;
       continue;
     }
-    for (const file of addon.files || []) {
-      const dest = pathApi.join(input.gameDir, file.rel);
-      fs.mkdirSync(pathApi.dirname(dest), { recursive: true });
-      fs.copyFileSync(file.from, dest);
+    try {
+      for (const file of addon.files || []) {
+        const dest = pathApi.join(input.gameDir, file.rel);
+        fs.mkdirSync(pathApi.dirname(dest), { recursive: true });
+        fs.copyFileSync(file.from, dest);
+      }
+    } catch {
+      addonFailure = addon.name;
     }
   }
   return {
@@ -79,6 +83,11 @@ async function restoreGame(input, deps) {
   if (input.gameRunning === true) return { ok: false, error: 'game-running' };
   const { fs, path: nodePath, runner } = deps;
   const pathApi = nodePath || path;
+  const files = input.record.files || [];
+  const replaced = files.filter(file => file.action === 'replaced');
+  if (replaced.some(file => !file.backup || !fs.existsSync(file.backup))) {
+    return { ok: false, error: 'restore-blocked', record: input.record, output: '' };
+  }
   const scriptPath = pathApi.join(input.gameDir, 'runtime_sync.ps1');
   const scriptExists = fs.existsSync(scriptPath);
   const runtimeSyncExists = fs.existsSync(pathApi.join(input.gameDir, 'OptiScaler', 'RuntimeSync'));
@@ -92,7 +101,19 @@ async function restoreGame(input, deps) {
   if (restoreDecision({ scriptExists, runtimeSyncExists, exitCode }) === 'stop') {
     return { ok: false, error: 'restore-blocked', record: input.record, output };
   }
-  for (const file of input.record.files || []) fs.rmSync(pathApi.join(input.gameDir, file.rel), { force: true });
+  try {
+    for (const file of replaced) {
+      const dest = pathApi.join(input.gameDir, file.rel);
+      fs.mkdirSync(pathApi.dirname(dest), { recursive: true });
+      fs.copyFileSync(file.backup, dest);
+    }
+  } catch {
+    return { ok: false, error: 'restore-blocked', record: input.record, output };
+  }
+  for (const file of files) {
+    if (file.action !== 'added') continue;
+    fs.rmSync(pathApi.join(input.gameDir, file.rel), { force: true });
+  }
   return { ok: true, status: 'not-installed', record: null, output };
 }
 

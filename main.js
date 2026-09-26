@@ -1908,10 +1908,11 @@ function auroraBackupDir(gameDir) {
 
 function loadAurora() {
   const data = readStore(auroraStoreFile());
-  if (!data || typeof data !== 'object' || Array.isArray(data)) return { packageRoot: null, records: {} };
+  if (!data || typeof data !== 'object' || Array.isArray(data)) return { packageRoot: null, records: {}, gameDirs: {} };
   return {
     packageRoot: typeof data.packageRoot === 'string' ? data.packageRoot : null,
-    records: data.records && typeof data.records === 'object' && !Array.isArray(data.records) ? data.records : {}
+    records: data.records && typeof data.records === 'object' && !Array.isArray(data.records) ? data.records : {},
+    gameDirs: data.gameDirs && typeof data.gameDirs === 'object' && !Array.isArray(data.gameDirs) ? data.gameDirs : {}
   };
 }
 
@@ -1967,24 +1968,44 @@ function queryGameRunning(exePath) {
   });
 }
 
-function recordAurora(gameDir, record, action) {
+function recordAurora(gameDir, record, action, addonFailure) {
   try {
-    history().record(gameDir, {
+    const manifest = {
       route: 'aurora',
       date: new Date().toISOString(),
-      added: Array.isArray(record.files) ? record.files.length : 0,
+      added: Array.isArray(record && record.files) ? record.files.length : 0,
       replaced: 0
-    }, action, path.basename(gameDir));
+    };
+    if (typeof addonFailure === 'string' && addonFailure) manifest.addonFailure = addonFailure;
+    history().record(gameDir, manifest, action, path.basename(gameDir));
   } catch (error) {
     return error.message;
   }
   return null;
 }
 
+function rememberAuroraDir(store, libraryDir, gameDir) {
+  if (typeof libraryDir !== 'string' || !libraryDir.trim()) return;
+  if (typeof gameDir !== 'string' || !gameDir.trim()) return;
+  store.gameDirs[libraryDir] = gameDir;
+}
+
 ipcMain.handle('aurora-state', () => {
   const store = loadAurora();
-  const packageInfo = store.packageRoot ? validatePackage(store.packageRoot) : { ok: false };
-  return { packageRoot: store.packageRoot, package: packageInfo, records: store.records };
+  return {
+    packageRoot: store.packageRoot,
+    package: validatePackage(store.packageRoot),
+    records: store.records,
+    gameDirs: store.gameDirs
+  };
+});
+
+ipcMain.handle('aurora-remember-dir', (_event, libraryDir, gameDir) => {
+  if (typeof libraryDir !== 'string' || typeof gameDir !== 'string') return { ok: false };
+  const store = loadAurora();
+  rememberAuroraDir(store, libraryDir, gameDir);
+  saveAurora(store);
+  return { ok: true, gameDir: store.gameDirs[libraryDir] || null };
 });
 
 ipcMain.handle('aurora-preset', (_event, dirName, exeName) => matchKnownGame({
@@ -2024,7 +2045,7 @@ ipcMain.handle('aurora-install', async (_event, gameDir, proxy, overwriteConfirm
     result.record = saved;
   }
   if (result.ok) {
-    const warning = recordAurora(gameDir, result.record, 'install');
+    const warning = recordAurora(gameDir, result.record, 'install', result.addonFailure);
     if (warning) result.historyWarning = warning;
   }
   return result;
@@ -2067,6 +2088,8 @@ ipcMain.handle('aurora-restore', async (_event, gameDir, exePath) => {
     const fresh = loadAurora();
     delete fresh.records[gameDir];
     saveAurora(fresh);
+    const warning = recordAurora(gameDir, record || { files: [] }, 'restore');
+    if (warning) result.historyWarning = warning;
   }
   return result;
 });

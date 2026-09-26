@@ -82,12 +82,12 @@ test('no label on the community page is defined twice', () => {
   }
 });
 
-test('the game sheet shows what the community found, before installing', () => {
+test('the game sheet does not open community or overlays', () => {
   const renderer = read('src', 'renderer', 'renderer.js');
-  assert.match(renderer, /<div class="sheet-community" id="sheetCommunity" hidden><\/div>/);
-  assert.match(renderer, /queueMicrotask\(\(\) => fillSheetCommunity\(g, dir\)\);/);
-  assert.match(read('main.js'), /ipcMain\.handle\('community-for-game'/);
-  assert.equal((read('src', 'renderer', 'i18n.js').match(/sheetCommunityTitle: '/g) || []).length, 2, 'in English and Arabic');
+  assert.doesNotMatch(renderer, /id="sheetCommunity"/);
+  assert.doesNotMatch(renderer, /fillSheetCommunity/);
+  assert.doesNotMatch(renderer, /show\('community'\)/);
+  assert.doesNotMatch(renderer, /show\('overlays'\)/);
 });
 
 // Somebody names you in the chat, answers you there, or likes what you wrote:

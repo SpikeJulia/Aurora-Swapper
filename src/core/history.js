@@ -12,13 +12,15 @@ const validDate = value => typeof value === 'string' && Number.isFinite(Date.par
 const fingerprint = row => `${key(row.dir)}|${row.manifestDate}|${row.action}`;
 
 function operation(dir, manifest = {}, action = 'install', name) {
-  return {
+  const row = {
     id: crypto.randomUUID(), name: name || path.basename(dir), dir: path.resolve(dir),
     date: new Date().toISOString(), manifestDate: validDate(manifest.date) ? manifest.date : null,
     action, undone: action === 'restore', route: manifest.route || null,
     exe: manifest.game?.exe || null, api: manifest.game?.api || null,
     replaced: count(manifest.replaced), added: count(manifest.added)
   };
+  if (typeof manifest.addonFailure === 'string' && manifest.addonFailure) row.addonFailure = manifest.addonFailure;
+  return row;
 }
 
 function knownFolders(state = {}, games = []) {

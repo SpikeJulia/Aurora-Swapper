@@ -126,6 +126,57 @@ function auroraCoversGame(gameDir, recordDir) {
   return recordKey === gameKey || recordKey.startsWith(gameKey + '/');
 }
 
+function rememberedGameDir(aurora, libraryDir) {
+  const table = aurora && aurora.gameDirs;
+  if (!table || typeof table !== 'object') return '';
+  if (typeof table[libraryDir] === 'string' && table[libraryDir]) return table[libraryDir];
+  const want = auroraPathKey(libraryDir);
+  for (const [key, value] of Object.entries(table)) {
+    if (auroraPathKey(key) === want && typeof value === 'string' && value) return value;
+  }
+  return '';
+}
+
+function recordKeyAt(records, gameDir) {
+  if (!records || typeof records !== 'object' || !gameDir) return null;
+  if (records[gameDir]) return gameDir;
+  const want = auroraPathKey(gameDir);
+  for (const key of Object.keys(records)) {
+    if (auroraPathKey(key) === want) return key;
+  }
+  return null;
+}
+
+function recordAt(records, gameDir) {
+  const key = recordKeyAt(records, gameDir);
+  return key ? records[key] : null;
+}
+
+async function rememberAuroraDir(libraryDir, gameDir) {
+  if (!window.lab.auroraRememberDir) return;
+  if (!libraryDir || !gameDir || !String(gameDir).trim()) return;
+  try { await window.lab.auroraRememberDir(libraryDir, gameDir); } catch { /* This action still uses the typed directory. */ }
+}
+
+async function auroraRestoreTarget(libraryDir) {
+  let aurora = null;
+  try {
+    aurora = window.lab.auroraState ? await window.lab.auroraState() : null;
+  } catch {
+    return null;
+  }
+  const records = aurora && aurora.records && typeof aurora.records === 'object' ? aurora.records : {};
+  const saved = rememberedGameDir(aurora, libraryDir);
+  const savedKey = recordKeyAt(records, saved);
+  if (savedKey) return savedKey;
+  const own = recordKeyAt(records, libraryDir);
+  if (own) return own;
+  for (const key of Object.keys(records)) {
+    if (auroraCoversGame(libraryDir, key)) return key;
+  }
+  return null;
+}
+
 function countAuroraInstalled(games, records) {
   const entries = records && typeof records === 'object' ? Object.entries(records) : [];
   return (games || []).filter((game) => entries.some(([key, record]) => {
@@ -364,6 +415,7 @@ async function renderHistory() {
           <div class="d" dir="auto">${esc(r.dir)}</div>
           ${r.exe ? `<div class="d" dir="auto">${esc(r.exe)}</div>` : ''}
           ${r.route || r.api ? `<div class="d">${esc([historyRoute(r), r.api].filter(Boolean).join(' · '))}</div>` : ''}
+          ${r.addonFailure ? `<div class="d">addonFailure ${esc(r.addonFailure)}</div>` : ''}
         </div>
         <div class="c">${esc(t('replacedAdded', r.replaced, r.added))}</div>
         <div class="d">${esc(new Date(r.date).toLocaleString(state.lang))}</div>
@@ -375,6 +427,7 @@ const historyRoute = row => ({ native: 'ReShade / RenoDX', feeder: 'ReShade / DL
 function historyAction(row) {
   if (row.action === 'restore') return t('restored');
   if (row.action === 'recovery') return t('historyRecovered');
+  if (row.action === 'repair') return t('historyRepair');
   return t(row.imported ? 'historySnapshot' : 'installed');
 }
 function historyText() {
@@ -382,6 +435,7 @@ function historyText() {
     `[${row.date}] ${historyAction(row)} — ${row.name}`,
     row.dir, row.exe,
     [historyRoute(row), row.api].filter(Boolean).join(' · '),
+    row.addonFailure ? `addonFailure ${row.addonFailure}` : '',
     t('replacedAdded', row.replaced, row.added)
   ].filter(Boolean).join('\n')).join('\n\n');
 }
@@ -474,6 +528,17 @@ $('dlgSave').onclick = async () => {
 };
 
 
+let lastAuroraPackagePick = null;
+
+function auroraPackageReason(aurora) {
+  const pick = lastAuroraPackagePick;
+  if (pick && pick.ok === false && !pick.cancelled && pick.reason) return String(pick.reason);
+  if (aurora && aurora.packageRoot && aurora.package && aurora.package.ok === false && aurora.package.reason) {
+    return String(aurora.package.reason);
+  }
+  return '';
+}
+
 async function renderSettings() {
   const info = await window.lab.settings();
   let aurora = { packageRoot: null };
@@ -484,9 +549,11 @@ async function renderSettings() {
     }
   } catch { /* The picker still opens if the store cannot be read. */ }
   const packagePath = aurora.packageRoot == null ? '' : String(aurora.packageRoot);
+  const packageReason = auroraPackageReason(aurora);
   $('settings').innerHTML = `
     <div class="set-row"><div><div class="k">Aurora 发布包</div>
-      <div class="v"><code id="auroraPackagePath">${esc(packagePath)}</code></div></div>
+      <div class="v"><code id="auroraPackagePath">${esc(packagePath)}</code></div>
+      ${packageReason ? `<div class="v" id="auroraPackageReason">${esc(packageReason)}</div>` : ''}</div>
       <button class="ghost sm" id="chooseAuroraPackage" type="button">指定 Aurora 发布包</button></div>
     <div class="set-row"><div><div class="k">${t('setGroupGames')}</div>
       <div class="v" id="setGroupGamesHint">${t('setGroupGamesHint')}</div></div>
@@ -549,7 +616,8 @@ async function renderSettings() {
     const button = $('chooseAuroraPackage');
     if (button) button.disabled = true;
     try {
-      if (window.lab.chooseAuroraPackage) await window.lab.chooseAuroraPackage();
+      const picked = window.lab.chooseAuroraPackage ? await window.lab.chooseAuroraPackage() : null;
+      if (picked && typeof picked === 'object' && !picked.cancelled) lastAuroraPackagePick = picked.ok === true ? null : picked;
     } catch (error) {
       log(error.message);
     }
@@ -851,8 +919,7 @@ function auroraStatusText(status) {
 }
 
 async function installOptions(d, pick, dir) {
-  const gameDir = auroraGameDirOf(pick, dir);
-  let aurora = { packageRoot: null, records: {} };
+  let aurora = { packageRoot: null, records: {}, gameDirs: {} };
   let preset = null;
   try {
     const pending = [window.lab.auroraState ? window.lab.auroraState() : Promise.resolve(aurora)];
@@ -861,7 +928,9 @@ async function installOptions(d, pick, dir) {
     if (state && typeof state === 'object') aurora = state;
     preset = known || null;
   } catch { /* The sheet still opens when the preset lookup fails. */ }
-  const record = aurora.records && aurora.records[gameDir] ? aurora.records[gameDir] : null;
+  const remembered = rememberedGameDir(aurora, dir);
+  const gameDir = remembered || auroraGameDirOf(pick, dir);
+  const record = recordAt(aurora.records, gameDir);
   const status = record && record.status ? record.status : '';
   const proxy = (record && AURORA_PROXIES.includes(record.proxy) && record.proxy)
     || (preset && AURORA_PROXIES.includes(preset.proxy) && preset.proxy)
@@ -880,7 +949,7 @@ async function installOptions(d, pick, dir) {
       <input id="auroraGameDir" value="${esc(gameDir)}" spellcheck="false">
       ${note}
     </div>`,
-    packageRoot: aurora.packageRoot == null ? null : aurora.packageRoot,
+    packageOk: Boolean(aurora.package && aurora.package.ok === true),
     record
   };
 }
@@ -918,32 +987,6 @@ function jobLog(line) {
 // The community dialog lives in another file and cannot reach in here; after
 // it files or deletes a report the sheet behind it is out of date.
 window.refreshSheet = dir => { if (sheetGame && sheetGame.dir === dir) openSheet(dir, true); };
-
-// "Before I install": what the community found for this game, in its sheet. It
-// asks by the same keys a report is filed under; an older server, or no
-// connection, leaves the space empty rather than saying something untrue.
-async function fillSheetCommunity(g, dir) {
-  const box = $('sheetCommunity');
-  if (!box) return;
-  const answer = await window.lab.communityForGame(dir).catch(() => null);
-  if (sheetGame !== g || !answer?.ok || !answer.supported || !$('sheetCommunity')) return;
-  const card = answer.card;
-  const routes = card ? ['renodx', 'feeder', 'optiscaler'].filter((route) => card.verdicts?.[route]).map((route) => {
-    const v = card.verdicts[route];
-    const name = route === 'optiscaler' ? 'OptiScaler' : route === 'renodx' ? 'RenoDX' : 'Feeder';
-    return `<div class="sheet-community-route"><span>${esc(name)}</span><span class="g"><i></i>${v.green || 0}</span><span class="y"><i></i>${v.yellow || 0}</span><span class="r"><i></i>${v.red || 0}</span></div>`;
-  }).join('') : '';
-  const status = card ? ({ working: t('communityWorking'), mixed: t('communityMixed'), broken: t('communityBroken') }[card.status] || '') : '';
-  box.innerHTML = card
-    ? `<header><b>${esc(t('sheetCommunityTitle'))}</b>${status ? `<span class="sheet-community-status ${esc(card.status)}">${esc(status)}</span>` : ''}
-         <button class="ghost sm" id="sheetCommunityOpen" type="button">${esc(t('sheetCommunityOpen'))}</button></header>
-       ${routes ? `<div class="sheet-community-routes">${routes}</div>` : ''}
-       <p>${esc(t('sheetCommunityCounts', card.reports || 0, card.comments || 0))}</p>`
-    : `<header><b>${esc(t('sheetCommunityTitle'))}</b></header><p>${esc(t('sheetCommunityNone'))}</p>`;
-  box.hidden = false;
-  const open = $('sheetCommunityOpen');
-  if (open) open.onclick = () => { closeSheet(); show('community'); window.communityUi?.openCard?.(card.key); };
-}
 
 async function openSheet(dir, keepLog = false) {
   if (jobRunning) return;
@@ -999,7 +1042,6 @@ async function openSheet(dir, keepLog = false) {
       ${info && info.summary ? `<p class="summary">${esc(info.summary.slice(0, 260))}${info.summary.length > 260 ? '…' : ''}</p>` : ''}
 
       ${exePicker(d, dir)}
-      <div class="sheet-community" id="sheetCommunity" hidden></div>
       ${auroraOptions.html}
 
       <div class="specs">
@@ -1014,8 +1056,8 @@ async function openSheet(dir, keepLog = false) {
         `<div class="filerow"><span class="f">${esc(f.rel)}</span><span class="v">${esc(f.version || '—')}</span></div>`).join('')}</div>` : ''}
 
       <div class="sheet-actions">
-        <button class="btn-install" id="doInstall"${auroraOptions.packageRoot == null ? ' disabled' : ''}>安装 Aurora</button>
-        <button class="btn-restore" id="doRepair"${auroraOptions.record && auroraOptions.record.status ? '' : ' disabled'}>修复运行库</button>
+        <button class="btn-install" id="doInstall"${auroraOptions.packageOk ? '' : ' disabled'}>安装 Aurora</button>
+        <button class="btn-restore" id="doRepair"${auroraOptions.packageOk && auroraOptions.record && auroraOptions.record.status ? '' : ' disabled'}>修复运行库</button>
         <button class="btn-restore" id="doRestore"${auroraOptions.record && auroraOptions.record.status ? '' : ' disabled'}>还原原始文件</button>
         <button class="btn-restore" id="doOpen">打开游戏目录</button>
       </div>
@@ -1023,8 +1065,6 @@ async function openSheet(dir, keepLog = false) {
       <div class="job" id="job" role="status" aria-live="polite">${esc(jobLines.join('\n') || t('jobReady'))}</div>
     </div>`;
 
-  // Filled in once the sheet is on screen, so the sheet never waits on the network.
-  queueMicrotask(() => fillSheetCommunity(g, dir));
   $('sheetClose').onclick = closeSheet;
   $('copyJob').onclick = () => copyText([sheetGame.name, sheetGame.dir, '', ...jobLines].join('\n'));
   // Everything an issue report needs, in one file, instead of four asked for
@@ -1044,6 +1084,8 @@ async function openSheet(dir, keepLog = false) {
   $('doRepair').onclick = () => runAurora('check', dir);
   $('doRestore').onclick = () => runAurora('restore', dir);
   $('doOpen').onclick = () => window.lab.open($('auroraGameDir').value);
+  const typedDir = $('auroraGameDir');
+  if (typedDir) typedDir.addEventListener('change', () => rememberAuroraDir(dir, typedDir.value));
 }
 
 function wireExePicker(dir) {
@@ -1067,7 +1109,7 @@ function wireExePicker(dir) {
   };
 }
 
-function paintAuroraStatus(record, packageRoot) {
+function paintAuroraStatus(record, packageInfo) {
   const status = record && record.status ? record.status : '';
   const node = $('auroraStatus');
   if (node) node.textContent = auroraStatusText(status);
@@ -1081,9 +1123,10 @@ function paintAuroraStatus(record, packageRoot) {
       node.insertAdjacentElement('afterend', line);
     }
   } else if (hint) hint.remove();
-  if ($('doInstall') && packageRoot !== undefined) $('doInstall').disabled = packageRoot == null;
+  const ready = Boolean(packageInfo && packageInfo.ok === true);
+  if ($('doInstall')) $('doInstall').disabled = !ready;
   const missing = !status;
-  if ($('doRepair')) $('doRepair').disabled = missing;
+  if ($('doRepair')) $('doRepair').disabled = missing || !ready;
   if ($('doRestore')) $('doRestore').disabled = missing;
   for (const id of ['doOpen', 'proxyChoice', 'auroraGameDir', 'sheetClose', 'exeSelect']) {
     const el = $(id);
@@ -1099,11 +1142,12 @@ function auroraJobText(result) {
   return parts.join('\n');
 }
 
-// Sheet actions call Aurora IPC. runJob stays for the old context-menu restore.
+// Sheet actions call Aurora IPC. The right-click menu does too.
 async function runAurora(kind, dir) {
   if (jobRunning) return;
   const gameDir = ($('auroraGameDir') && $('auroraGameDir').value) || dir;
   const proxy = ($('proxyChoice') && $('proxyChoice').value) || 'dxgi.dll';
+  await rememberAuroraDir(dir, gameDir);
   const pick = sheetDetails ? chosenExe(sheetDetails, dir) : null;
   const exePath = pick && pick.path ? pick.path : null;
   const locked = {
@@ -1136,14 +1180,14 @@ async function runAurora(kind, dir) {
   const job = $('job');
   if (job) job.textContent = text;
   let record;
-  let packageRoot;
+  let packageInfo;
   try {
     const fresh = await window.lab.auroraState();
-    packageRoot = fresh ? fresh.packageRoot : null;
-    record = fresh && fresh.records ? fresh.records[gameDir] || null : null;
+    packageInfo = fresh && fresh.package ? fresh.package : { ok: false };
+    record = fresh && fresh.records ? recordAt(fresh.records, gameDir) : null;
   } catch {
     record = undefined;
-    packageRoot = undefined;
+    packageInfo = undefined;
   }
   jobRunning = false;
   if (result && result.ok) paintAuroraHome();
@@ -1159,7 +1203,7 @@ async function runAurora(kind, dir) {
     return;
   }
   // Status comes from the stored record, not from a failed check's return value.
-  paintAuroraStatus(record, packageRoot);
+  paintAuroraStatus(record, packageInfo);
 }
 
 async function runJob(kind, dir) {
@@ -1390,12 +1434,11 @@ async function performGameAction(action, dir) {
       const error = await window.lab.open(dir);
       if (error) throw new Error(error);
     } else if (action === 'restore') {
-      // The native menu already requested confirmation. Re-read the actual
-      // backup before reusing the existing guarded restore/history/log flow.
-      await openSheet(dir);
-      if (jobRunning || sheetGame !== game) return;
-      if (!sheetDetails?.hasBackup) throw new Error(t('menuNoBackup'));
-      await runJob('restore', dir);
+      const target = await auroraRestoreTarget(dir);
+      if (!target || !window.lab.auroraRestore) return;
+      const result = await window.lab.auroraRestore(target, null);
+      if (result && result.ok === false) throw new Error(result.error || 'restore-blocked');
+      if (result && result.ok) paintAuroraHome();
     } else if (action === 'scan') {
       const scan = await window.lab.scan(dir);
       if (state.games.includes(game)) game.cached = scan;
@@ -1534,11 +1577,14 @@ async function openGameMenu(card, position) {
     // desktop was open. Reconcile before choosing Add versus Edit/Delete.
     await window.communityUi?.syncOwnReports?.();
     const action = await showGameMenu(game, position, { busy: jobRunning || cardActionsBusy.size > 0 });
-    // The native menu used to ask before a restore. It still gets asked.
-    if (action === 'restore' && !await ask({
-      icon: 'restore', tone: 'accent', title: t('menuConfirmRestore'),
-      body: t('menuRestoreHint'), confirm: t('restore'), cancel: t('cancel')
-    })) return;
+    if (action === 'restore') {
+      const target = await auroraRestoreTarget(dir);
+      if (!target) return;
+      if (!await ask({
+        icon: 'restore', tone: 'accent', title: t('menuConfirmRestore'),
+        body: t('menuRestoreHint'), confirm: t('restore'), cancel: t('cancel')
+      })) return;
+    }
     if (action) await performGameAction(action, dir);
   } catch (error) {
     log(t('menuActionFailed', card.getAttribute('aria-label'), error.message));

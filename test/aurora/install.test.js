@@ -59,6 +59,72 @@ test('addon name collision is reported without removing Aurora', async () => {
   assert.equal(fs.readFileSync(path.join(fx.gameDir, 'readme.txt'), 'utf8'), 'hi');
 });
 
+test('a replaced file is restored from its backup path', async () => {
+  const fx = fixture();
+  fs.writeFileSync(path.join(fx.gameDir, 'readme.txt'), 'ORIGINAL');
+  const installed = await installGame({
+    ...fx, proxy: 'dxgi.dll', record: null, overwriteConfirmed: false, addons: [], gameRunning: false
+  }, { fs, path, runner: async () => ({ code: 0, stdout: '', stderr: '' }) });
+  const replaced = installed.record.files.find(file => file.rel === 'readme.txt');
+  assert.equal(installed.ok, true);
+  assert.equal(replaced.action, 'replaced');
+  assert.equal(fs.readFileSync(replaced.backup, 'utf8'), 'ORIGINAL');
+  assert.equal(fs.readFileSync(path.join(fx.gameDir, 'readme.txt'), 'utf8'), 'hi');
+  const restored = await restoreGame({ ...fx, record: installed.record, gameRunning: false }, {
+    fs, path, runner: async () => ({ code: 0, stdout: '', stderr: '' })
+  });
+  assert.equal(restored.ok, true);
+  assert.equal(fs.readFileSync(path.join(fx.gameDir, 'readme.txt'), 'utf8'), 'ORIGINAL');
+  assert.equal(fs.existsSync(path.join(fx.gameDir, 'dxgi.dll')), false);
+  assert.equal(fs.existsSync(path.join(fx.gameDir, 'runtime_sync.ps1')), false);
+});
+
+test('a missing backup blocks restore and deletes nothing', async () => {
+  const fx = fixture();
+  fs.writeFileSync(path.join(fx.gameDir, 'dxgi.dll'), 'AURORA');
+  fs.writeFileSync(path.join(fx.gameDir, 'readme.txt'), 'AURORA');
+  fs.writeFileSync(path.join(fx.gameDir, 'runtime_sync.ps1'), 'echo ok');
+  const record = {
+    proxy: 'dxgi.dll',
+    files: [
+      { rel: 'dxgi.dll', action: 'added' },
+      { rel: 'readme.txt', action: 'replaced', backup: path.join(fx.backupDir, 'gone.txt') }
+    ]
+  };
+  const blocked = await restoreGame({ ...fx, record, gameRunning: false }, {
+    fs, path, runner: async () => ({ code: 0, stdout: '', stderr: '' })
+  });
+  assert.equal(blocked.ok, false);
+  assert.equal(blocked.error, 'restore-blocked');
+  assert.equal(fs.readFileSync(path.join(fx.gameDir, 'dxgi.dll'), 'utf8'), 'AURORA');
+  assert.equal(fs.readFileSync(path.join(fx.gameDir, 'readme.txt'), 'utf8'), 'AURORA');
+  assert.equal(fs.existsSync(path.join(fx.gameDir, 'runtime_sync.ps1')), true);
+});
+
+test('an addon copy throw still returns installed', async () => {
+  const fx = fixture();
+  const addon = dir();
+  const from = path.join(addon, 'extra.txt');
+  fs.writeFileSync(from, 'x');
+  const wrapped = Object.create(fs);
+  wrapped.copyFileSync = (src, dest, ...rest) => {
+    if (src === from) throw new Error('addon-copy-failed');
+    return fs.copyFileSync(src, dest, ...rest);
+  };
+  const result = await installGame({
+    ...fx, proxy: 'dxgi.dll', record: null, overwriteConfirmed: false, gameRunning: false,
+    addons: [{ name: 'extra', files: [{ rel: 'extra.txt', from }] }]
+  }, { fs: wrapped, path, runner: async () => ({ code: 0, stdout: '', stderr: '' }) });
+  assert.equal(result.ok, true);
+  assert.equal(result.status, 'installed');
+  assert.equal(result.record.status, 'installed');
+  assert.equal(result.addonFailure, 'extra');
+  assert.equal(fs.existsSync(path.join(fx.gameDir, 'dxgi.dll')), true);
+  assert.equal(fs.existsSync(path.join(fx.gameDir, 'runtime_sync.ps1')), true);
+  assert.equal(fs.readFileSync(path.join(fx.gameDir, 'readme.txt'), 'utf8'), 'hi');
+  assert.equal(fs.existsSync(path.join(fx.gameDir, 'extra.txt')), false);
+});
+
 test('check requests Check, and a blocked restore deletes nothing', async () => {
   const fx = fixture();
   fs.writeFileSync(path.join(fx.gameDir, 'dxgi.dll'), 'DLL');

@@ -98,6 +98,7 @@ contextBridge.exposeInMainWorld('lab', {
   auroraCheck: (gameDir, exePath) => ipcRenderer.invoke('aurora-check', gameDir, exePath),
   auroraRestore: (gameDir, exePath) => ipcRenderer.invoke('aurora-restore', gameDir, exePath),
   auroraPreset: (dirName, exeName) => ipcRenderer.invoke('aurora-preset', dirName, exeName),
+  auroraRememberDir: (libraryDir, gameDir) => ipcRenderer.invoke('aurora-remember-dir', libraryDir, gameDir),
   addons: () => ipcRenderer.invoke('addons'),
   addonToggle: (file, on) => ipcRenderer.invoke('addon-toggle', file, on),
   addonPick: () => ipcRenderer.invoke('addon-pick'),

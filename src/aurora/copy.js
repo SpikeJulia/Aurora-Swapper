@@ -21,9 +21,19 @@ function planCopy({ packageRoot, gameDir, backupDir, files, proxy, record, overw
     const from = path.join(packageRoot, file);
     const destRel = rel.toLowerCase() === 'optiscaler.dll' ? targetRel : rel;
     const dest = path.join(gameDir, destRel);
-    if (require('fs').existsSync(dest)) {
-      operations.push({ op: 'backup', rel: destRel, from: dest, to: path.join(backupDir, destRel) });
-      nextFiles.push({ rel: destRel, action: 'replaced' });
+    const prior = (record?.files || []).find(item => String(item.rel).toLowerCase() === destRel.toLowerCase());
+    const keptBackup = prior && prior.action === 'replaced' && typeof prior.backup === 'string' && prior.backup
+      ? prior.backup
+      : null;
+    if (keptBackup) {
+      // The first overwrite already saved the original. Do not replace that backup with Aurora.
+      nextFiles.push({ rel: destRel, action: 'replaced', backup: keptBackup });
+    } else if (prior && prior.action === 'added') {
+      nextFiles.push({ rel: destRel, action: 'added' });
+    } else if (require('fs').existsSync(dest)) {
+      const backupTo = path.join(backupDir, destRel);
+      operations.push({ op: 'backup', rel: destRel, from: dest, to: backupTo });
+      nextFiles.push({ rel: destRel, action: 'replaced', backup: backupTo });
     } else {
       nextFiles.push({ rel: destRel, action: 'added' });
     }
