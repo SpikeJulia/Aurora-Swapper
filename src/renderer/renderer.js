@@ -66,6 +66,7 @@ function show(view) {
   if (view !== 'chat') window.chatUi?.stopPolling?.();
   for (const s of document.querySelectorAll('.view')) s.classList.toggle('active', s.id === 'view-' + view);
   for (const b of document.querySelectorAll('.nav-item')) b.classList.toggle('active', b.dataset.view === view);
+  if (view === 'home') paintAuroraHome();
   if (view === 'history') renderHistory();
   if (view === 'settings') renderSettings();
   if (view === 'addons') renderAddons();
@@ -1145,6 +1146,7 @@ async function runAurora(kind, dir) {
     packageRoot = undefined;
   }
   jobRunning = false;
+  if (result && result.ok) paintAuroraHome();
   if (!(sheetGame && sheetGame.dir === dir)) return;
   if (record === undefined) {
     for (const id of ['doOpen', 'proxyChoice', 'auroraGameDir', 'sheetClose', 'exeSelect']) {
