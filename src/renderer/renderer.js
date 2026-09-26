@@ -107,25 +107,77 @@ function isReady(g) {
   return gameFilters.isInstalled(g, state.newDlss);
 }
 
+// Store keys are the install directory, which may be the exe folder rather than
+// the library folder. A game counts once when any installed record sits on
+// that folder or inside it.
+function auroraPathKey(value) {
+  return String(value || '').replace(/\\/g, '/').replace(/\/+$/, '').toLowerCase();
+}
+
+function auroraRecordInstalled(record) {
+  return Boolean(record) && record.status === 'installed';
+}
+
+function auroraCoversGame(gameDir, recordDir) {
+  const gameKey = auroraPathKey(gameDir);
+  const recordKey = auroraPathKey(recordDir);
+  if (!gameKey || !recordKey) return false;
+  return recordKey === gameKey || recordKey.startsWith(gameKey + '/');
+}
+
+function countAuroraInstalled(games, records) {
+  const entries = records && typeof records === 'object' ? Object.entries(records) : [];
+  return (games || []).filter((game) => entries.some(([key, record]) => {
+    if (!auroraRecordInstalled(record)) return false;
+    const dirs = [key];
+    if (typeof record.gameDir === 'string') dirs.push(record.gameDir);
+    return dirs.some((dir) => auroraCoversGame(game.dir, dir));
+  })).length;
+}
+
+function auroraPackageText(aurora) {
+  const pkg = aurora && aurora.package;
+  if (pkg && pkg.ok === true) return '已指定发布包';
+  if (!aurora || aurora.packageRoot == null) return '未指定 Aurora 发布包';
+  return '发布包无效：' + (pkg && pkg.reason != null ? pkg.reason : '');
+}
+
+let auroraHomeSeq = 0;
+
+async function paintAuroraHome() {
+  const seq = ++auroraHomeSeq;
+  const line = $('auroraPackageLine');
+  const counts = $('auroraCounts');
+  if (!line || !counts) return;
+  let aurora = null;
+  try {
+    aurora = window.lab.auroraState ? await window.lab.auroraState() : null;
+  } catch {
+    return;
+  }
+  if (seq !== auroraHomeSeq) return;
+  line.textContent = auroraPackageText(aurora);
+  const installed = countAuroraInstalled(state.games, aurora && aurora.records);
+  counts.textContent = `已安装 ${installed} · 未安装 ${state.games.length - installed}`;
+}
+
 function renderRecent() {
   const rows = state.recents
     .map((r) => ({ at: r.at, game: state.games.find((g) => g.dir === r.dir) }))
     .filter((r) => r.game)
     .slice(0, 8);
 
-  if (!rows.length) {
-    $('recents').innerHTML = `<p class="empty">${t('recentEmpty')}</p>`;
-    return;
-  }
-
-  $('recents').innerHTML = rows.map(({ at, game }) => `
+  $('recents').innerHTML = rows.length
+    ? rows.map(({ at, game }) => `
     <article class="rcard" data-dir="${esc(game.dir)}" tabindex="0" aria-label="${esc(game.name)}" aria-haspopup="menu">
       ${game.poster ? `<img src="${game.poster.url}" alt="">` : `<div class="initials">${esc(initials(game.name))}</div>`}
       <div class="meta">
         <div class="title">${esc(game.name)}</div>
         <div class="when"><span class="ago">${ago(at)}</span><i class="pip${isReady(game) ? ' on' : ''}"></i></div>
       </div>
-    </article>`).join('');
+    </article>`).join('')
+    : `<p class="empty">${t('recentEmpty')}</p>`;
+  paintAuroraHome();
 }
 
 // Why a folder cannot be patched. These arrive from the scanner as codes, and
@@ -423,7 +475,18 @@ $('dlgSave').onclick = async () => {
 
 async function renderSettings() {
   const info = await window.lab.settings();
+  let aurora = { packageRoot: null };
+  try {
+    if (window.lab.auroraState) {
+      const fresh = await window.lab.auroraState();
+      if (fresh && typeof fresh === 'object') aurora = fresh;
+    }
+  } catch { /* The picker still opens if the store cannot be read. */ }
+  const packagePath = aurora.packageRoot == null ? '' : String(aurora.packageRoot);
   $('settings').innerHTML = `
+    <div class="set-row"><div><div class="k">Aurora 发布包</div>
+      <div class="v"><code id="auroraPackagePath">${esc(packagePath)}</code></div></div>
+      <button class="ghost sm" id="chooseAuroraPackage" type="button">指定 Aurora 发布包</button></div>
     <div class="set-row"><div><div class="k">${t('setGroupGames')}</div>
       <div class="v" id="setGroupGamesHint">${t('setGroupGamesHint')}</div></div>
       <button class="setting-switch" id="setGroupGames" type="button" role="switch"
@@ -481,6 +544,17 @@ async function renderSettings() {
       <button class="ghost sm" id="setReset">${t('setReset')}</button></div>
     <div class="set-row"><div><div class="k">${t('setPosters')}</div><div class="v">${esc(info.posterDir)}</div></div>
       <span class="d">${t('setSaved', info.posterCount)}</span></div>`;
+  $('chooseAuroraPackage').onclick = async () => {
+    const button = $('chooseAuroraPackage');
+    if (button) button.disabled = true;
+    try {
+      if (window.lab.chooseAuroraPackage) await window.lab.chooseAuroraPackage();
+    } catch (error) {
+      log(error.message);
+    }
+    await renderSettings();
+    renderRecent();
+  };
   // Turning these off stops the asking as well as the showing: the poll in
   // the main process reads the same setting.
   $('setNotices').onclick = async () => {
