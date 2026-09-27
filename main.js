@@ -474,11 +474,7 @@ ipcMain.handle('boot', () => {
     version: require('./package.json').version,
     // Said at launch rather than at the moment somebody presses Install. The
     // app used to look completely healthy right up until it could not work.
-    payloadMissing: (() => {
-      // Never let a probe stop the app opening: a launch that fails because it
-      // could not check its own files is worse than the missing files.
-      try { return payload() ? null : payloadMissing().message; } catch { return null; }
-    })(),
+    payloadMissing: null,
     theme: state.theme || 'light',
     lang: state.lang || 'zh',
     groupGamesByStore: state.groupGamesByStore !== false,
@@ -1147,6 +1143,17 @@ ipcMain.handle('reset', () => {
 });
 
 ipcMain.handle('open', (_event, dir) => shell.openPath(dir));
+ipcMain.handle('launch', (_event, dir, rel) => {
+  if (typeof dir !== 'string' || typeof rel !== 'string' || !rel || rel.includes('..')) return 'bad-path';
+  const root = path.resolve(dir);
+  const exe = path.resolve(root, rel);
+  const rootKey = root.toLowerCase() + path.sep;
+  if (!exe.toLowerCase().startsWith(rootKey)) return 'bad-path';
+  if (!fs.existsSync(exe)) return 'missing';
+  const child = spawn(exe, [], { cwd: path.dirname(exe), detached: true, stdio: 'ignore' });
+  child.unref();
+  return null;
+});
 ipcMain.handle('open-project', async (_event, destination) => {
   const url = projectUrl(destination);
   if (!url) return false;

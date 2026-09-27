@@ -833,7 +833,18 @@ select option { background: var(--panel); color: var(--text); }
   background: var(--panel); border: 1px solid var(--stroke); color: var(--text);
   display: grid; place-items: center; font-size: 11px; cursor: pointer;
 }
+.tool svg { width: 14px; height: 14px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linejoin: round; }
 .tool:hover { background: var(--accent); color: #0b1405; border-color: transparent; }
+.play {
+  position: absolute; inset-inline-end: 10px; bottom: 10px; z-index: 3;
+  width: 36px; height: 36px; border: 0; border-radius: 50%; padding: 0;
+  display: grid; place-items: center; cursor: pointer;
+  background: rgba(12, 8, 24, .72); color: #fff;
+  opacity: 0; transition: opacity .15s ease, background .15s ease;
+}
+.play svg { width: 16px; height: 16px; fill: currentColor; margin-inline-start: 2px; }
+.card:hover .play, .card:focus-within .play { opacity: 1; }
+.play:hover { background: #7c3aed; }
 
 /* ---------------- history / settings ---------------- */
 .hist-row { display: flex; align-items: center; gap: 14px; padding: 14px 18px; border-bottom: 1px solid var(--line); }

@@ -69,6 +69,7 @@ contextBridge.exposeInMainWorld('lab', {
   hide: (dir) => ipcRenderer.invoke('hide', dir),
   reset: () => ipcRenderer.invoke('reset'),
   open: (dir) => ipcRenderer.invoke('open', dir),
+  launch: (dir, rel) => ipcRenderer.invoke('launch', dir, rel),
   openProject: (destination) => ipcRenderer.invoke('open-project', destination),
   setApiOverride: (dir, exePath, value) => ipcRenderer.invoke('set-api-override', dir, exePath, value),
   artStatus: () => ipcRenderer.invoke('art-status'),

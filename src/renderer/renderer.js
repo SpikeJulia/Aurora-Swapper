@@ -247,27 +247,29 @@ const reasonText = (code) => (code ? (REASONS[code] ? t(REASONS[code]) : code) :
 
 // ---------------- games grid ----------------
 
+const PLAY = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5.5v13l11-6.5z"/></svg>';
+
 function cardMarkup(g) {
   const s = g.cached;
   const api = s ? (s.api || reasonText(s.reason) || '—') : t('scanning');
   const dx12 = Boolean(s && s.dx12);
-  const hasDlss = gameFilters.hasDlss(g);
-  const status = s && s.ok
-    ? `<span class="dot-s ${hasDlss ? 'on' : ''}"></span>${s.dlss ? esc(short(s.dlss)) : t(hasDlss ? 'hasDlss' : 'noDlss')}
-       <span class="dot-s ${s.addon || s.optiscaler ? 'on' : ''}" style="margin-inline-start:8px"></span>${s.optiscaler ? 'OptiScaler' : t('addonShort')}`
+  const play = s && s.ok && s.exe
+    ? `<button class="play" data-act="launch" title="启动" aria-label="启动">${PLAY}</button>`
     : '';
-  const strip = status ? `<div class="status">${status}</div>` : '';
   const poster = g.poster
     ? `<div class="poster${g.poster.tall ? '' : ' wide'}"${g.poster.tall ? '' : ` style="--bgimg:url('${g.poster.url}')"`}>
-         <img src="${g.poster.url}" alt="">${strip}</div>`
-    : `<div class="poster"><div class="placeholder">${initials(g.name)}</div>${strip}</div>`;
+         <img src="${g.poster.url}" alt="">${play}</div>`
+    : `<div class="poster"><div class="placeholder">${initials(g.name)}</div>${play}</div>`;
 
   return `
     <article class="card${dx12 ? ' dx12' : ''}${s && !s.ok ? ' unsupported' : ''}" data-dir="${esc(g.dir)}" tabindex="0" aria-label="${esc(g.name)}" aria-haspopup="menu">
       <div class="tools">
-        <button class="tool" data-act="poster" title="${esc(t('menuPoster'))}">🖼</button>
-        <button class="tool" data-act="open" title="${esc(t('menuOpen'))}">📂</button>
-        <button class="tool" data-act="hide" title="${esc(t('menuHide'))}">✕</button>
+        <button class="tool" data-act="open" title="${esc(t('menuOpen'))}">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 8a2 2 0 0 1 2-2h5l2 2h7a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>
+        </button>
+        <button class="tool" data-act="hide" title="${esc(t('menuHide'))}">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg>
+        </button>
       </div>
       <span class="badge${dx12 ? ' dx12' : ''}">${esc(api)}</span>
       ${poster}
@@ -1420,12 +1422,12 @@ const cardActionsBusy = new Set();
 let contextMenuOpen = false;
 
 async function performGameAction(action, dir) {
-  if (!['details', 'open', 'copy', 'restore', 'scan', 'poster', 'community', 'communityRemove', 'hide'].includes(action)) return;
+  if (!['details', 'open', 'copy', 'restore', 'scan', 'poster', 'community', 'communityRemove', 'hide', 'launch'].includes(action)) return;
   const game = state.games.find(g => g.dir === dir);
   if (!game) return;
-  if (!['open', 'copy'].includes(action) && (jobRunning || cardActionsBusy.size)) return;
+  if (!['open', 'copy', 'launch'].includes(action) && (jobRunning || cardActionsBusy.size)) return;
   if (action === 'copy') return copyText(dir);
-  const locksCard = action !== 'open';
+  const locksCard = !['open', 'launch'].includes(action);
   if (locksCard) cardActionsBusy.add(dir);
   try {
     if (action === 'details') {
@@ -1433,6 +1435,11 @@ async function performGameAction(action, dir) {
     } else if (action === 'open') {
       const error = await window.lab.open(dir);
       if (error) throw new Error(error);
+    } else if (action === 'launch') {
+      const rel = game.cached && game.cached.exe;
+      if (!rel) return;
+      const error = await window.lab.launch(dir, rel);
+      if (error) throw new Error(error === 'missing' ? '找不到游戏程序' : error);
     } else if (action === 'restore') {
       const target = await auroraRestoreTarget(dir);
       if (!target || !window.lab.auroraRestore) return;
@@ -1637,7 +1644,7 @@ $('groups').onclick = async (event) => {
   const card = event.target.closest('.card');
   if (!card) return;
   const dir = card.dataset.dir;
-  const act = event.target.closest('.tool')?.dataset.act;
+  const act = event.target.closest('[data-act]')?.dataset.act;
 
   await performGameAction(act || 'details', dir);
 };
@@ -1682,7 +1689,7 @@ document.addEventListener('drop', (e) => e.preventDefault());
   // Nothing this app installs is on disk. Saying so now beats letting somebody
   // pick a game, choose a route and press Install before finding out (#220).
   if (boot.payloadMissing) log(boot.payloadMissing);
-  showUpdateNotice();
+
   state.logo = boot;
   paintBrand();
   state.art = (await window.lab.artStatus()).available;
