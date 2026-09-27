@@ -40,29 +40,6 @@
       "assets/**/*",
       "package.json"
     ],
-    "extraResources": [
-      {
-        "from": "payload",
-        "to": "payload",
-        "filter": [
-          "**/*"
-        ]
-      },
-      {
-        "from": "addons",
-        "to": "addons",
-        "filter": [
-          "**/*"
-        ]
-      },
-      {
-        "from": "overlay-bin",
-        "to": "overlay",
-        "filter": [
-          "**/*"
-        ]
-      }
-    ],
     "win": {
       "target": [
         "nsis",
@@ -82,8 +59,8 @@
     },
     "compression": "maximum",
     "portable": {
-      "artifactName": "DLSS5-Swapper-${version}-portable.exe",
-      "unpackDirName": "DLSS5-Swapper"
+      "artifactName": "Aurora-Swapper-${version}-portable.exe",
+      "unpackDirName": "Aurora-Swapper"
     },
     "nsis": {
       "oneClick": false,
