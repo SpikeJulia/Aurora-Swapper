@@ -200,6 +200,14 @@ const SYSTEM_DIRS = new Set([
 // happens to hold one game is still recognised.
 const LIBRARY_NAME = /^(games?|my ?games|steamlibrary|gog ?games|epic ?games|xbox ?games|origin ?games|repacks?|emulation)$/i;
 const NOT_A_GAME_EXE = /^(unins|setup|install|vcredist|dxsetup|dotnet|oalinst|crashpad|launcher_installer)/i;
+// Desktop tools that ship an exe but are not games. Electron apps are caught
+// separately by app.asar; these names cover the ones that do not.
+const NOT_A_GAME_APP = /^(git|git-cmd|git-bash|draw\.io|feishu|lark|localsend)(\.exe)?$/i;
+
+function isDesktopApp(dir) {
+  return fs.existsSync(path.join(dir, 'resources', 'app.asar'))
+    || fs.existsSync(path.join(dir, 'app.asar'));
+}
 
 // Fixed disks only. A disconnected network drive would block on every read.
 //
@@ -245,11 +253,14 @@ const NOT_A_GAME_DIR = /^(steamapps|gamesave|gamesaves|workshop|downloading|shad
 // covers a repack that buries it - Golf.Gambit.v1.0.5-EA-OFME\Golf Gambit\ -
 // and Unreal's Game\Binaries\Win64\ layout.
 function holdsGame(dir, depth = 3) {
+  if (isDesktopApp(dir) || NOT_A_GAME_APP.test(path.basename(dir))) return false;
   let entries;
   try { entries = fs.readdirSync(dir, { withFileTypes: true }); } catch { return false; }
-  if (entries.some((e) => e.isFile() && /\.exe$/i.test(e.name) && !NOT_A_GAME_EXE.test(e.name))) return true;
+  if (entries.some((e) => e.isFile() && /\.exe$/i.test(e.name)
+    && !NOT_A_GAME_EXE.test(e.name) && !NOT_A_GAME_APP.test(e.name))) return true;
   if (depth <= 0) return false;
-  return entries.some((e) => e.isDirectory() && holdsGame(path.join(dir, e.name), depth - 1));
+  return entries.some((e) => e.isDirectory() && !isDesktopApp(path.join(dir, e.name))
+    && holdsGame(path.join(dir, e.name), depth - 1));
 }
 
 function autoRoots() {

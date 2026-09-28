@@ -38,6 +38,30 @@ test('drive discovery is off by default while user folders are still scanned', (
   assert.ok(!result.games.some((entry) => path.resolve(entry.dir) === path.resolve(unrelated)));
 });
 
+test('desktop apps with an exe are not listed as games', (t) => {
+  const root = tempRoot(t);
+  const chosen = path.join(root, 'Portable');
+  const apps = {
+    'draw.io': ['draw.io.exe', ['resources', 'app.asar']],
+    Feishu: ['Feishu.exe', ['resources', 'app.asar']],
+    Git: ['git.exe', null],
+    LocalSend: ['localsend.exe', ['resources', 'app.asar']]
+  };
+  for (const [name, [exe, marker]] of Object.entries(apps)) {
+    const dir = path.join(chosen, name);
+    fs.mkdirSync(marker ? path.join(dir, ...marker.slice(0, -1)) : dir, { recursive: true });
+    fs.writeFileSync(path.join(dir, exe), 'test');
+    if (marker) fs.writeFileSync(path.join(dir, ...marker), 'asar');
+  }
+  const game = path.join(chosen, 'A Real Game');
+  fs.mkdirSync(game);
+  fs.writeFileSync(path.join(game, 'game.exe'), 'test');
+
+  const result = discover([chosen], false, [], () => []);
+  const names = result.games.map((entry) => entry.name);
+  assert.deepEqual(names, ['A Real Game']);
+});
+
 test('enabling drive discovery scans every detected game root', (t) => {
   const root = tempRoot(t);
   const automatic = path.join(root, 'Games');
