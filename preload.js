@@ -96,6 +96,7 @@ contextBridge.exposeInMainWorld('lab', {
   auroraPathCaseInsensitive: process.platform === 'win32',
   auroraState: () => ipcRenderer.invoke('aurora-state'),
   chooseAuroraPackage: () => ipcRenderer.invoke('aurora-choose-package'),
+  checkAuroraPackageUpdate: (force = false) => ipcRenderer.invoke('aurora-check-package-update', force),
   downloadAuroraPackage: (source) => ipcRenderer.invoke('aurora-download-package', source),
   cancelAuroraPackageDownload: () => ipcRenderer.invoke('aurora-cancel-package-download'),
   onAuroraPackageProgress: (handler) => ipcRenderer.on('aurora-package-progress', (_e, progress) => handler(progress)),

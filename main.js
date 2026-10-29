@@ -47,6 +47,7 @@ const { recoverTransaction } = require('./src/aurora/transaction');
 const { readStore, writeStore } = require('./src/aurora/store');
 const { createAuroraService, gameKey } = require('./src/aurora/service');
 const { downloadAuroraPackage } = require('./src/aurora-package-download');
+const { createAuroraUpdateChecker } = require('./src/aurora-package-update');
 const { matchKnownGame } = require('./src/aurora/games');
 const gameMenu = require('./src/core/game-menu');
 const { CommunityClient, ADMIN_TOKEN_PATTERN } = require('./src/community-client');
@@ -2211,6 +2212,20 @@ ipcMain.handle('aurora-choose-package', async () => {
   return { ok: true, packageRoot: store.packageRoot };
 });
 
+ipcMain.handle('aurora-check-package-update', async (_event, force) => {
+  const current = loadAurora();
+  const error = auroraStoreError(current);
+  if (error) return { ...error, status: 'error' };
+  return getAuroraUpdateChecker().check({
+    packageOk: validatePackage(current.packageRoot).ok === true,
+    packageVersion: current.packageVersion,
+    packageDigest: current.packageDigest,
+    packageSource: current.packageSource,
+    language: loadState().lang || 'zh',
+    force: force === true
+  });
+});
+
 ipcMain.handle('aurora-download-package', async (event, requestedSource) => {
   const current = loadAurora();
   const storeError = auroraStoreError(current);
@@ -2242,6 +2257,7 @@ ipcMain.handle('aurora-download-package', async (event, requestedSource) => {
     fresh.packageDigest = result.digest;
     fresh.packageSource = result.source;
     saveAurora(fresh);
+    await getAuroraUpdateChecker().rememberRelease(result);
     return { ...result, packageRoot: fresh.packageRoot };
   } catch (error) {
     return { ok: false, code: error.code || 'download-failed', message: error.message || String(error) };
