@@ -91,16 +91,17 @@ function setStatus(text, percent) {
 // ---------------- views ----------------
 
 function show(view) {
+  const targetView = view === 'home' ? 'games' : view;
   if (view !== 'chat') window.chatUi?.stopPolling?.();
-  for (const s of document.querySelectorAll('.view')) s.classList.toggle('active', s.id === 'view-' + view);
-  for (const b of document.querySelectorAll('.nav-item')) b.classList.toggle('active', b.dataset.view === view);
-  if (view === 'home') paintAuroraHome();
-  if (view === 'history') renderHistory();
-  if (view === 'settings') renderSettings();
-  if (view === 'addons') renderAddons();
-  if (view === 'overlays') window.overlayLab?.render?.();
-  if (view === 'community') window.communityUi?.render?.();
-  if (view === 'chat') window.chatUi?.render?.();
+  for (const s of document.querySelectorAll('.view')) s.classList.toggle('active', s.id === 'view-' + targetView);
+  for (const b of document.querySelectorAll('.nav-item')) b.classList.toggle('active', b.dataset.view === targetView);
+  if (targetView === 'history') renderHistory();
+  if (targetView === 'guide') window.auroraGuideController?.render();
+  if (targetView === 'settings') renderSettings();
+  if (targetView === 'addons') renderAddons();
+  if (targetView === 'overlays') window.overlayLab?.render?.();
+  if (targetView === 'community') window.communityUi?.render?.();
+  if (targetView === 'chat') window.chatUi?.render?.();
 }
 
 for (const link of document.querySelectorAll('[data-project]')) {
@@ -204,6 +205,7 @@ async function auroraRestoreTarget(libraryDir) {
 }
 
 function auroraPackageText(aurora) {
+  if (aurora && aurora.storeError) return `Aurora 记录损坏，已禁用修改：${aurora.storeError.path || ''}`;
   const pkg = aurora && aurora.package;
   if (pkg && pkg.ok === true) return '已指定发布包';
   if (!aurora || aurora.packageRoot == null) return '未指定 Aurora 发布包';
@@ -717,6 +719,9 @@ $('dlgSave').onclick = async () => {
 let lastAuroraPackagePick = null;
 
 function auroraPackageReason(aurora) {
+  if (aurora && aurora.storeError) {
+    return `Aurora 记录损坏，修改操作已禁用。文件：${aurora.storeError.path || ''}；${aurora.storeError.message || ''}`;
+  }
   const pick = lastAuroraPackagePick;
   if (pick && pick.ok === false && !pick.cancelled && pick.reason) return String(pick.reason);
   if (aurora && aurora.packageRoot && aurora.package && aurora.package.ok === false && aurora.package.reason) {
@@ -1255,6 +1260,7 @@ function auroraGameDirOf(pick, dir) {
 function auroraStatusText(status) {
   if (status === 'installed') return '已安装';
   if (status === 'incomplete') return '安装未完成';
+  if (status) return '状态待确认';
   return '未安装';
 }
 

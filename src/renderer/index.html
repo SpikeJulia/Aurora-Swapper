@@ -18,14 +18,11 @@
       <div class="brand" id="brand"></div>
 
       <nav class="nav" id="nav">
-        <button class="nav-item active" data-view="home">
-          <svg viewBox="0 0 24 24"><path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V20h14V9.5"/></svg>
-          <span data-i18n="navHome">Home</span><i class="dot"></i>
-        </button>
-        <button class="nav-item" data-view="games">
+        <button class="nav-item active" data-view="games">
           <svg viewBox="0 0 24 24"><rect x="2" y="7" width="20" height="11" rx="4"/><path d="M7 11v3m-1.5-1.5h3M16 12h.01M18.5 14h.01"/></svg>
           <span data-i18n="navGames">Games</span><i class="dot"></i>
         </button>
+        <button class="nav-item" data-view="guide">
           <svg viewBox="0 0 24 24"><path d="M12 5c-3-2-6-2-9-1v15c3-1 6-1 9 1 3-2 6-2 9-1V4c-3-1-6-1-9 1zm0 0v15"/></svg>
         </button>
         <button class="nav-item" data-view="addons">
@@ -136,6 +133,7 @@
         <p class="hint hidden" id="historyWarning" role="status"></p>
         <div class="glass" id="history"></div>
         <div class="section-head session-log-heading">
+          <h3 data-i18n="sessionLogTitle">Current session log</h3>
           <div class="row">
             <button class="ghost sm" id="copyLog" data-i18n="copyLog" disabled>Copy log</button>
             <button class="ghost sm" id="clearLog" data-i18n="clear">Clear</button>
@@ -263,6 +261,7 @@
   <script src="cheer.js"></script>
   <script src="../shared/install-routes.js"></script>
   <script src="../shared/rendering-api.js"></script>
+  <script src="aurora-library-model.js"></script>
   <script src="aurora-guide.js"></script>
   <script src="renderer.js"></script>
 </body>

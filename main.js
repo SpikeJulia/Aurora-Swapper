@@ -241,6 +241,7 @@ let win = null;
 const stateFile = () => path.join(app.getPath('userData'), 'library.json');
 const posterDir = () => path.join(app.getPath('userData'), 'posters');
 const keyFor = (dir) => crypto.createHash('sha1').update(path.resolve(dir).toLowerCase()).digest('hex').slice(0, 16);
+const LIBRARY_SORTS = new Set(['played', 'store', 'name-asc', 'name-desc']);
 // Bump when scan metadata or detection changes so an old wrong result is not
 // kept forever merely because the folder was scanned by an earlier release.
 const SCAN_RULES = 7;
@@ -276,6 +277,32 @@ function saveState(state) {
     fs.writeFileSync(stateFile(), JSON.stringify(liveState, null, 2), 'utf8');
     return true;
   } catch { return false; }
+}
+
+function normalizeLibraryPreferences(state) {
+  let changed = false;
+  if (!LIBRARY_SORTS.has(state.librarySort)) {
+    state.librarySort = state.groupGamesByStore === false ? 'name-asc' : 'store';
+    changed = true;
+  }
+  if (Object.prototype.hasOwnProperty.call(state, 'groupGamesByStore')) {
+    delete state.groupGamesByStore;
+    changed = true;
+  }
+
+  const stored = state.lastLaunchedAt;
+  if (!stored || typeof stored !== 'object' || Array.isArray(stored)) {
+    state.lastLaunchedAt = {};
+    changed = true;
+  } else {
+    const valid = {};
+    for (const [key, value] of Object.entries(stored)) {
+      if (typeof value === 'number' && Number.isFinite(value) && value > 0) valid[key] = value;
+    }
+    if (Object.keys(valid).length !== Object.keys(stored).length) changed = true;
+    state.lastLaunchedAt = valid;
+  }
+  return changed;
 }
 
 // A choice belongs to one executable, not every launcher in the same folder.
@@ -471,6 +498,7 @@ app.on('before-quit', () => { quitting = true; overlayBridge?.close(); });
 // the file is not there.
 ipcMain.handle('boot', () => {
   const state = loadState();
+  if (normalizeLibraryPreferences(state)) saveState(state);
   const asUrl = (name) => {
     const file = path.join(__dirname, 'assets', name);
     return fs.existsSync(file) ? pathToFileURL(file).href : null;
@@ -482,7 +510,8 @@ ipcMain.handle('boot', () => {
     payloadMissing: null,
     theme: state.theme || 'light',
     lang: state.lang || 'zh',
-    groupGamesByStore: state.groupGamesByStore !== false,
+    librarySort: state.librarySort,
+    lastLaunchedAt: { ...state.lastLaunchedAt },
     logo: asUrl('logo.png'),
     logoDark: asUrl('logo-dark.png')
   };
@@ -586,7 +615,6 @@ ipcMain.handle('settings', () => {
     excludedRoots: state.excludedRoots || [],
     hidden: [...(state.hidden || [])],
     autoScanDrives: state.autoScanDrives === true,
-    groupGamesByStore: state.groupGamesByStore !== false,
     closeToTray: state.closeToTray !== false
   };
 });
@@ -926,11 +954,13 @@ ipcMain.handle('set-tray-labels', (_event, labels) => {
   return true;
 });
 
-ipcMain.handle('set-group-games-by-store', (_event, enabled) => {
+ipcMain.handle('set-library-sort', (_event, sort) => {
   const state = loadState();
-  state.groupGamesByStore = enabled === true;
+  if (normalizeLibraryPreferences(state)) saveState(state);
+  if (!LIBRARY_SORTS.has(sort)) return false;
+  state.librarySort = sort;
   saveState(state);
-  return state.groupGamesByStore;
+  return state.librarySort;
 });
 
 ipcMain.handle('set-auto-scan-drives', (_event, enabled) => {
@@ -943,8 +973,14 @@ ipcMain.handle('set-auto-scan-drives', (_event, enabled) => {
 
 // Used when a folder arrives by drop rather than through the picker.
 ipcMain.handle('add-game-path', (_event, dir) => {
+  if (typeof dir !== 'string' || !path.isAbsolute(dir)) return null;
+  try {
+    if (!fs.statSync(dir).isDirectory()) return null;
+  } catch {
+    return null;
+  }
   const state = loadState();
-  if (fs.existsSync(dir) && !state.manual.includes(dir)) {
+  if (!state.manual.includes(dir)) {
     state.manual.push(dir);
     saveState(state);
   }
@@ -1155,9 +1191,32 @@ ipcMain.handle('launch', (_event, dir, rel) => {
   const rootKey = root.toLowerCase() + path.sep;
   if (!exe.toLowerCase().startsWith(rootKey)) return 'bad-path';
   if (!fs.existsSync(exe)) return 'missing';
-  const child = spawn(exe, [], { cwd: path.dirname(exe), detached: true, stdio: 'ignore' });
-  child.unref();
-  return null;
+  let child;
+  try {
+    child = spawn(exe, [], { cwd: path.dirname(exe), detached: true, stdio: 'ignore' });
+    child.unref();
+  } catch (error) {
+    return error.code || 'launch-failed';
+  }
+  return new Promise((resolve) => {
+    let settled = false;
+    child.once('error', (error) => {
+      if (settled) return;
+      settled = true;
+      resolve(error && error.code || 'launch-failed');
+    });
+    child.once('spawn', () => {
+      if (settled) return;
+      settled = true;
+      const state = loadState();
+      if (!state.lastLaunchedAt || typeof state.lastLaunchedAt !== 'object' || Array.isArray(state.lastLaunchedAt)) {
+        state.lastLaunchedAt = {};
+      }
+      state.lastLaunchedAt[keyFor(root)] = Date.now();
+      saveState(state);
+      resolve(null);
+    });
+  });
 });
 ipcMain.handle('open-project', async (_event, destination) => {
   const url = projectUrl(destination);

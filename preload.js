@@ -52,7 +52,7 @@ contextBridge.exposeInMainWorld('lab', {
   communityChatModerate: (id, action) => ipcRenderer.invoke('community-chat-moderate', id, action),
   communityChatSaveImage: (url, name) => ipcRenderer.invoke('community-chat-save-image', url, name),
   settings: () => ipcRenderer.invoke('settings'),
-  setGroupGamesByStore: (enabled) => ipcRenderer.invoke('set-group-games-by-store', enabled),
+  setLibrarySort: (sort) => ipcRenderer.invoke('set-library-sort', sort),
   setCloseToTray: (enabled) => ipcRenderer.invoke('set-close-to-tray', enabled),
   driverNeuralFault: () => ipcRenderer.invoke('driver-neural-fault'),
   optiscalerBuilds: (dir) => ipcRenderer.invoke('optiscaler-builds', dir),
