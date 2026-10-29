@@ -22,6 +22,7 @@ const LANGS = [
 
 const S = {
   en: {
+    navGuide: 'Usage guide',
     antiCheatWarningTitle: 'Warning: anti-cheat detected',
     antiCheatWarning: 'This game appears to use anti-cheat. ReShade, Feeder or OptiScaler may cause crashes, prevent launch, or result in an account ban. Installation is optional: click Install and explicitly accept the risks to continue. Anti-cheat will not be disabled or bypassed.',
     errAntiCheatConsent: 'Anti-cheat was detected. Click Install again to review the warning and choose whether to continue.',
@@ -308,7 +309,8 @@ The install will go through. If the neural pass never appears in game, 616.56 is
     artFound: (a, b) => `الصور: ${a} من ${b}`, libReady: (n, d) => `المكتبة جاهزة — ${n} لعبة، ${d} على DirectX 12`
   },
   zh: {
-    navHome: '主页', navGames: '游戏', navHistory: '历史', navSettings: '设置', navAbout: '关于',
+    navGuide: '使用指南',
+    navHome: '主页', navGames: '游戏库', navHistory: '历史', navSettings: '设置', navAbout: '关于',
     navOverlay: '叠加层',
     setHidden: '已隐藏的游戏', setHiddenNone: '没有隐藏的游戏。', setUnhide: '恢复显示',
     hideTitle: '隐藏这款游戏？',
