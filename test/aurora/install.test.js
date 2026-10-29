@@ -101,6 +101,80 @@ test('a missing backup blocks restore and deletes nothing', async () => {
   assert.equal(fs.existsSync(path.join(fx.gameDir, 'runtime_sync.ps1')), true);
 });
 
+test('restore rejects a persisted relative path that escapes the game directory', async () => {
+  const fx = fixture();
+  const outsideDir = dir();
+  const outside = path.join(outsideDir, 'important.txt');
+  fs.writeFileSync(outside, 'keep me');
+  const rel = path.relative(fx.gameDir, outside);
+  const result = await restoreGame({
+    ...fx, record: { files: [{ rel, action: 'added' }] }, gameRunning: false
+  }, { fs, path, runner: async () => ({ code: 0, stdout: '', stderr: '' }) });
+
+  assert.equal(result.ok, false);
+  assert.equal(result.error, 'restore-blocked');
+  assert.equal(fs.readFileSync(outside, 'utf8'), 'keep me');
+});
+
+test('restore rejects a persisted backup path outside Aurora backup storage', async () => {
+  const fx = fixture();
+  const gameFile = path.join(fx.gameDir, 'readme.txt');
+  const outsideBackup = path.join(dir(), 'private.txt');
+  fs.writeFileSync(gameFile, 'Aurora copy');
+  fs.writeFileSync(outsideBackup, 'untrusted source');
+  const result = await restoreGame({
+    ...fx,
+    record: { files: [{ rel: 'readme.txt', action: 'replaced', backup: outsideBackup }] },
+    gameRunning: false
+  }, { fs, path, runner: async () => ({ code: 0, stdout: '', stderr: '' }) });
+
+  assert.equal(result.ok, false);
+  assert.equal(result.error, 'restore-blocked');
+  assert.equal(fs.readFileSync(gameFile, 'utf8'), 'Aurora copy');
+});
+
+test('restore refuses a directory masquerading as an original-file backup before running the script', async () => {
+  const fx = fixture();
+  const gameFile = path.join(fx.gameDir, 'readme.txt');
+  fs.writeFileSync(gameFile, 'Aurora copy');
+  const backupPath = path.join(fx.backupDir, 'readme.txt');
+  fs.mkdirSync(backupPath);
+  let runnerCalled = false;
+  const result = await restoreGame({
+    ...fx,
+    record: { files: [{ rel: 'readme.txt', action: 'replaced', backup: backupPath }] },
+    gameRunning: false
+  }, { fs, path, runner: async () => { runnerCalled = true; return { code: 0, stdout: '', stderr: '' }; } });
+
+  assert.equal(result.ok, false);
+  assert.equal(result.error, 'restore-blocked');
+  assert.equal(runnerCalled, false);
+  assert.equal(fs.readFileSync(gameFile, 'utf8'), 'Aurora copy');
+});
+
+test('restore refuses a recorded path that crosses a game-directory symlink', async t => {
+  const fx = fixture();
+  const outsideDir = dir();
+  const outside = path.join(outsideDir, 'important.txt');
+  fs.writeFileSync(outside, 'keep me');
+  const link = path.join(fx.gameDir, 'redirect');
+  try {
+    fs.symlinkSync(outsideDir, link, process.platform === 'win32' ? 'junction' : 'dir');
+  } catch (error) {
+    t.skip(`symlink creation unavailable: ${error.code || error.message}`);
+    return;
+  }
+  let runnerCalled = false;
+  const result = await restoreGame({
+    ...fx, record: { files: [{ rel: 'redirect/important.txt', action: 'added' }] }, gameRunning: false
+  }, { fs, path, runner: async () => { runnerCalled = true; return { code: 0, stdout: '', stderr: '' }; } });
+
+  assert.equal(result.ok, false);
+  assert.equal(result.error, 'restore-blocked');
+  assert.equal(runnerCalled, false);
+  assert.equal(fs.readFileSync(outside, 'utf8'), 'keep me');
+});
+
 test('an addon copy throw still returns installed', async () => {
   const fx = fixture();
   const addon = dir();
@@ -140,4 +214,94 @@ test('check requests Check, and a blocked restore deletes nothing', async () => 
   const blocked = await restoreGame({ ...fx, record, gameRunning: false }, { fs, path, runner: async () => { throw new Error('no'); } });
   assert.equal(blocked.error, 'restore-blocked');
   assert.equal(fs.existsSync(path.join(fx.gameDir, 'dxgi.dll')), true);
+});
+
+test('install checkpoints its snapshot before writes, then checkpoints script and commit', async () => {
+  const fx = fixture();
+  const events = [];
+  const observedFs = Object.create(fs);
+  observedFs.copyFileSync = (from, to, ...args) => {
+    if (to.startsWith(fx.gameDir + path.sep) && from.startsWith(fx.packageRoot + path.sep)) {
+      events.push(`write:${path.basename(to)}`);
+    }
+    return fs.copyFileSync(from, to, ...args);
+  };
+  const result = await installGame({
+    ...fx, proxy: 'dxgi.dll', record: null, overwriteConfirmed: false, addons: [], gameRunning: false
+  }, {
+    fs: observedFs, path,
+    checkpoint: async (transaction, commit) => {
+      if (transaction) events.push(`checkpoint:${transaction.phase}`);
+      else events.push(`checkpoint:commit:${commit.record.status}`);
+    },
+    runner: async () => { events.push('runner'); return { code: 0, stdout: '', stderr: '' }; }
+  });
+
+  assert.equal(result.ok, true);
+  const position = name => events.findIndex(event => event.startsWith(name));
+  assert.ok(position('checkpoint:prepared') >= 0);
+  assert.ok(position('checkpoint:copying') > position('checkpoint:prepared'));
+  assert.ok(position('write:') > position('checkpoint:copying'));
+  assert.ok(position('checkpoint:script-running') > position('write:'));
+  assert.ok(position('runner') > position('checkpoint:script-running'));
+  assert.ok(position('checkpoint:commit:installed') > position('runner'));
+});
+
+test('failed copying checkpoint prevents game writes and script execution', async () => {
+  const fx = fixture();
+  let runnerCalled = false;
+  const result = await installGame({
+    ...fx, proxy: 'dxgi.dll', record: null, overwriteConfirmed: false, addons: [], gameRunning: false
+  }, {
+    fs, path,
+    checkpoint: async transaction => {
+      if (transaction && transaction.phase === 'copying') throw new Error('store unavailable');
+    },
+    runner: async () => { runnerCalled = true; return { code: 0, stdout: '', stderr: '' }; }
+  });
+
+  assert.equal(result.ok, false);
+  assert.equal(result.error, 'checkpoint-failed');
+  assert.equal(fs.existsSync(path.join(fx.gameDir, 'dxgi.dll')), false);
+  assert.equal(runnerCalled, false);
+});
+
+test('a runner exception leaves an incomplete record and recoverable transaction', async () => {
+  const fx = fixture();
+  const phases = [];
+  const result = await installGame({
+    ...fx, proxy: 'dxgi.dll', record: null, overwriteConfirmed: false, addons: [], gameRunning: false
+  }, {
+    fs, path,
+    checkpoint: async transaction => { if (transaction) phases.push(transaction.phase); },
+    runner: async () => { throw new Error('PowerShell exited unexpectedly'); }
+  });
+
+  assert.equal(result.ok, false);
+  assert.equal(result.status, 'incomplete');
+  assert.equal(result.needsRecovery, true);
+  assert.equal(result.record.status, 'incomplete');
+  assert.deepEqual(phases.slice(-2), ['script-running', 'needs-recovery']);
+  assert.equal(fs.existsSync(path.join(fx.gameDir, 'dxgi.dll')), true);
+});
+
+test('failed final record commit cannot report a successful install', async () => {
+  const fx = fixture();
+  const phases = [];
+  const result = await installGame({
+    ...fx, proxy: 'dxgi.dll', record: null, overwriteConfirmed: false, addons: [], gameRunning: false
+  }, {
+    fs, path,
+    checkpoint: async (transaction, commit) => {
+      if (transaction) phases.push(transaction.phase);
+      if (!transaction && commit) throw new Error('disk full');
+    },
+    runner: async () => ({ code: 0, stdout: '', stderr: '' })
+  });
+
+  assert.equal(result.ok, false);
+  assert.equal(result.status, 'incomplete');
+  assert.equal(result.needsRecovery, true);
+  assert.equal(result.record.status, 'incomplete');
+  assert.equal(phases.at(-1), 'needs-recovery');
 });

@@ -49,7 +49,9 @@ test('the uninstaller says uninstalling does not restore games (#266)', () => {
   assert.equal(pkg.build.nsis.include, 'build/installer.nsh');
   const script = read('build', 'installer.nsh');
   assert.match(script, /!macro customUnInit/);
-  assert.match(script, /Restore originals/);
+  assert.match(script, /还原原始文件/);
+  assert.match(script, /安装记录和备份保存在本机应用数据目录，卸载时将保留/);
+  assert.doesNotMatch(script, /backup stays in each game folder/i);
   assert.match(script, /isUpdated/, 'and it stays out of the way of an update');
 });
 

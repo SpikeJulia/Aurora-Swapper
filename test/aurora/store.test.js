@@ -8,9 +8,9 @@ const { readStore, writeStore } = require('../../src/aurora/store');
 
 test('round-trips the package path and one game record', () => {
   const file = path.join(os.tmpdir(), `aurora-store-${Date.now()}.json`);
-  const data = { packageRoot: '/pkg', records: { '/game': { proxy: 'dxgi.dll', files: [], status: 'installed' } } };
+  const data = { packageRoot: '/pkg', records: { '/game': { proxy: 'dxgi.dll', files: [], status: 'installed' } }, transactions: {} };
   writeStore(file, data);
   assert.deepEqual(readStore(file), data);
   fs.rmSync(file, { force: true });
-  assert.deepEqual(readStore(file), { packageRoot: null, records: {} });
+  assert.deepEqual(readStore(file), { packageRoot: null, records: {}, transactions: {} });
 });

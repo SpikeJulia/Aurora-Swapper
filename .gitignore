@@ -10,3 +10,6 @@ docs/nexus/
 tools/
 vendor/
 .worktrees/
+
+# macOS
+.DS_Store

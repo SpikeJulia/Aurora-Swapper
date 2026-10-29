@@ -1,8 +1,9 @@
 'use strict';
 const path = require('path');
 const { validatePackage } = require('./package');
-const { planCopy, applyCopy } = require('./copy');
+const { planCopy, prepareCopy, applyCopy, restoreCopy, cleanupSnapshot } = require('./copy');
 const { powershellCommand, restoreDecision } = require('./script');
+const { resolveRecorded, resolveRelative, validateRecord } = require('./paths');
 
 function walk(fs, root, base = root, out = []) {
   for (const entry of fs.readdirSync(root, { withFileTypes: true })) {
@@ -34,11 +35,96 @@ async function installGame(input, deps) {
     overwriteConfirmed: input.overwriteConfirmed
   });
   if (!plan.ok) return { ok: false, error: plan.error };
-  const applied = applyCopy(plan, { fs, path: pathApi });
-  if (!applied.ok) return { ok: false, error: 'copy-failed', message: applied.message };
-  const ran = await runner(powershellCommand(pathApi.join(input.gameDir, 'runtime_sync.ps1'), 'Install', input.gameDir));
+  const checkpoint = typeof deps.checkpoint === 'function' ? deps.checkpoint : async () => {};
+  const prepared = prepareCopy(plan, { fs, path: pathApi });
+  if (!prepared.ok) return { ok: false, error: 'copy-failed', message: prepared.message };
+  const cleanSnapshot = () => cleanupSnapshot({ snapshotDir: prepared.snapshotDir }, {
+    fs, path: pathApi, backupDir: input.backupDir
+  });
+  let transaction = {
+    id: pathApi.basename(plan.snapshotDir),
+    gameDir: input.gameDir,
+    exePath: input.exePath || null,
+    phase: 'prepared',
+    previousRecord: input.record || null,
+    nextRecord: plan.nextRecord,
+    snapshotDir: prepared.snapshotDir,
+    snapshotManifest: prepared.manifest
+  };
+  try {
+    await checkpoint(transaction);
+    transaction = { ...transaction, phase: 'copying' };
+    await checkpoint(transaction);
+  } catch (error) {
+    return { ok: false, error: 'checkpoint-failed', message: error.message, transaction };
+  }
+
+  const applied = applyCopy(plan, { fs, path: pathApi, snapshotManifest: prepared.manifest });
+  if (!applied.ok) {
+    if (applied.rollbackFailed) {
+      transaction = { ...transaction, phase: 'needs-recovery', recoveryKind: 'copy-rollback' };
+      try { await checkpoint(transaction); } catch { /* The previous copying checkpoint still references the snapshot. */ }
+      return { ...applied, status: 'incomplete', needsRecovery: true, record: { ...plan.nextRecord, status: 'incomplete' } };
+    }
+    try {
+      await checkpoint(null, { gameDir: input.gameDir, record: input.record || null });
+      try { cleanSnapshot(); } catch { /* The committed store no longer references it. */ }
+    } catch (error) {
+      return { ok: false, error: 'checkpoint-failed', message: error.message, transaction };
+    }
+    return { ok: false, error: 'copy-failed', message: applied.message };
+  }
+
+  try {
+    transaction = { ...transaction, phase: 'script-running' };
+    await checkpoint(transaction);
+  } catch (error) {
+    const rolledBack = restoreCopy(prepared.manifest, {
+      fs, path: pathApi, gameDir: input.gameDir, backupDir: input.backupDir,
+      snapshotDir: prepared.snapshotDir
+    });
+    if (rolledBack.ok) {
+      try {
+        await checkpoint(null, { gameDir: input.gameDir, record: input.record || null });
+        try { cleanSnapshot(); } catch { /* The committed store no longer references it. */ }
+      } catch { /* The persisted copying checkpoint remains safe to replay. */ }
+    } else {
+      transaction = { ...transaction, phase: 'needs-recovery', recoveryKind: 'copy-rollback' };
+      try { await checkpoint(transaction); } catch { /* Keep the last durable checkpoint and snapshot. */ }
+    }
+    return { ok: false, error: 'checkpoint-failed', message: error.message, needsRecovery: !rolledBack.ok };
+  }
+
+  let ran;
+  try {
+    ran = await runner(powershellCommand(pathApi.join(input.gameDir, 'runtime_sync.ps1'), 'Install', input.gameDir));
+  } catch (error) {
+    const record = { ...plan.nextRecord, status: 'incomplete' };
+    transaction = { ...transaction, phase: 'needs-recovery', recoveryKind: 'script-restore', nextRecord: record };
+    try { await checkpoint(transaction); } catch { /* script-running is also treated as incomplete during startup. */ }
+    return {
+      ok: false, error: 'script-failed', status: 'incomplete', needsRecovery: true,
+      record, output: error.message
+    };
+  }
+  const output = outputOf(ran);
+  const installedRecord = { ...plan.nextRecord, status: ran.code === 0 ? 'installed' : 'incomplete' };
   if (ran.code !== 0) {
-    return { ok: false, error: 'script-failed', status: 'incomplete', record: plan.nextRecord, output: outputOf(ran) };
+    try {
+      await checkpoint(null, { gameDir: input.gameDir, record: installedRecord });
+      try { cleanSnapshot(); } catch { /* The incomplete record is committed. */ }
+    } catch (error) {
+      transaction = {
+        ...transaction, phase: 'needs-recovery', recoveryKind: 'script-restore',
+        nextRecord: { ...plan.nextRecord, status: 'incomplete' }
+      };
+      try { await checkpoint(transaction); } catch { /* Keep the durable script-running checkpoint and its snapshot. */ }
+      return {
+        ok: false, error: 'script-failed', status: 'incomplete', needsRecovery: true,
+        record: transaction.nextRecord, output: output || error.message
+      };
+    }
+    return { ok: false, error: 'script-failed', status: 'incomplete', record: installedRecord, output };
   }
   let addonFailure = null;
   const taken = new Set(plan.nextRecord.files.map(file => file.rel.toLowerCase()));
@@ -57,13 +143,27 @@ async function installGame(input, deps) {
       addonFailure = addon.name;
     }
   }
+  try {
+    await checkpoint(null, { gameDir: input.gameDir, record: installedRecord });
+    try { cleanSnapshot(); } catch { /* The installed record is committed. */ }
+  } catch (error) {
+    transaction = {
+      ...transaction, phase: 'needs-recovery', recoveryKind: 'script-restore',
+      nextRecord: { ...plan.nextRecord, status: 'incomplete' }
+    };
+    try { await checkpoint(transaction); } catch { /* The script-running transaction still prevents a false success. */ }
+    return {
+      ok: false, error: 'checkpoint-failed', status: 'incomplete', needsRecovery: true,
+      record: transaction.nextRecord, output: error.message
+    };
+  }
   return {
     ok: true,
     status: 'installed',
-    record: { ...plan.nextRecord, status: 'installed' },
+    record: installedRecord,
     addonFailure,
     unconfirmedClose: input.gameRunning === null,
-    output: outputOf(ran)
+    output
   };
 }
 
@@ -83,11 +183,15 @@ async function restoreGame(input, deps) {
   if (input.gameRunning === true) return { ok: false, error: 'game-running' };
   const { fs, path: nodePath, runner } = deps;
   const pathApi = nodePath || path;
-  const files = input.record.files || [];
-  const replaced = files.filter(file => file.action === 'replaced');
-  if (replaced.some(file => !file.backup || !fs.existsSync(file.backup))) {
+  let files;
+  try {
+    files = validateRecord(input.record, {
+      gameDir: input.gameDir, backupDir: input.backupDir, fs, path: pathApi
+    });
+  } catch {
     return { ok: false, error: 'restore-blocked', record: input.record, output: '' };
   }
+  const replaced = files.filter(file => file.action === 'replaced');
   const scriptPath = pathApi.join(input.gameDir, 'runtime_sync.ps1');
   const scriptExists = fs.existsSync(scriptPath);
   const runtimeSyncExists = fs.existsSync(pathApi.join(input.gameDir, 'OptiScaler', 'RuntimeSync'));
@@ -101,18 +205,31 @@ async function restoreGame(input, deps) {
   if (restoreDecision({ scriptExists, runtimeSyncExists, exitCode }) === 'stop') {
     return { ok: false, error: 'restore-blocked', record: input.record, output };
   }
+  let operations;
   try {
-    for (const file of replaced) {
-      const dest = pathApi.join(input.gameDir, file.rel);
-      fs.mkdirSync(pathApi.dirname(dest), { recursive: true });
-      fs.copyFileSync(file.backup, dest);
-    }
+    operations = files.map(file => ({
+      file,
+      dest: resolveRelative(input.gameDir, file.rel, { fs, path: pathApi }),
+      ...(file.action === 'replaced'
+        ? { backup: resolveRecorded(input.backupDir, file.backup, { fs, path: pathApi }) }
+        : {})
+    }));
+    if (operations.some(operation => operation.backup && !fs.existsSync(operation.backup))) throw new Error('missing-backup');
   } catch {
     return { ok: false, error: 'restore-blocked', record: input.record, output };
   }
-  for (const file of files) {
-    if (file.action !== 'added') continue;
-    fs.rmSync(pathApi.join(input.gameDir, file.rel), { force: true });
+  try {
+    for (const operation of operations) {
+      if (operation.backup) {
+        fs.mkdirSync(pathApi.dirname(operation.dest), { recursive: true });
+        fs.copyFileSync(operation.backup, operation.dest);
+      }
+    }
+    for (const operation of operations) {
+      if (operation.file.action === 'added') fs.rmSync(operation.dest, { force: true });
+    }
+  } catch {
+    return { ok: false, error: 'restore-blocked', record: input.record, output };
   }
   return { ok: true, status: 'not-installed', record: null, output };
 }

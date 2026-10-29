@@ -42,7 +42,10 @@ const { HistoryStore, knownFolders, fromManifests } = require('./src/core/histor
 const { spawn, execFile } = require('child_process');
 const { validatePackage } = require('./src/aurora/package');
 const { installGame, checkGame, restoreGame } = require('./src/aurora/install');
+const { cleanupSnapshot } = require('./src/aurora/copy');
+const { recoverTransaction } = require('./src/aurora/transaction');
 const { readStore, writeStore } = require('./src/aurora/store');
+const { createAuroraService, gameKey } = require('./src/aurora/service');
 const { matchKnownGame } = require('./src/aurora/games');
 const gameMenu = require('./src/core/game-menu');
 const { CommunityClient, ADMIN_TOKEN_PATTERN } = require('./src/community-client');
@@ -438,6 +441,8 @@ app.whenReady().then(async () => {
   // this point: without the guard it would create a window and take over the
   // overlay endpoint on its way out.
   if (!singleInstance) return;
+  try { await recoverAuroraTransactions(); }
+  catch (error) { console.error('Aurora recovery:', error.message); }
   // Registered here rather than at load: main.js is exercised in a plain vm
   // context by the tests, where src modules are stubbed and cannot be called.
   require('./src/overlay-ipc')({ app, ipcMain, dialog, shell, window: () => win, bridge: () => overlayBridge });
@@ -1909,22 +1914,114 @@ function auroraStoreFile() {
 }
 
 function auroraBackupDir(gameDir) {
-  const hash = crypto.createHash('sha256').update(path.resolve(gameDir).toLowerCase()).digest('hex');
+  const hash = crypto.createHash('sha256').update(gameKey(gameDir)).digest('hex');
   return path.join(app.getPath('userData'), 'aurora-backups', hash);
 }
 
 function loadAurora() {
-  const data = readStore(auroraStoreFile());
-  if (!data || typeof data !== 'object' || Array.isArray(data)) return { packageRoot: null, records: {}, gameDirs: {} };
+  let data;
+  try {
+    data = readStore(auroraStoreFile());
+  } catch (error) {
+    return {
+      packageRoot: null, packageVersion: null, packageDigest: null, packageSource: null,
+      records: {}, gameDirs: {}, transactions: {},
+      storeError: { path: auroraStoreFile(), message: error.message }
+    };
+  }
+  if (!data || typeof data !== 'object' || Array.isArray(data)) {
+    return { packageRoot: null, packageVersion: null, packageDigest: null, packageSource: null, records: {}, gameDirs: {}, transactions: {} };
+  }
   return {
     packageRoot: typeof data.packageRoot === 'string' ? data.packageRoot : null,
     records: data.records && typeof data.records === 'object' && !Array.isArray(data.records) ? data.records : {},
-    gameDirs: data.gameDirs && typeof data.gameDirs === 'object' && !Array.isArray(data.gameDirs) ? data.gameDirs : {}
+    gameDirs: data.gameDirs && typeof data.gameDirs === 'object' && !Array.isArray(data.gameDirs) ? data.gameDirs : {},
+    transactions: data.transactions && typeof data.transactions === 'object' && !Array.isArray(data.transactions) ? data.transactions : {}
   };
 }
 
 function saveAurora(store) {
+  if (store && store.storeError) throw new Error(`Aurora 记录损坏：${store.storeError.path}`);
   writeStore(auroraStoreFile(), store);
+}
+
+function auroraStoreError(store) {
+  if (!store || !store.storeError) return null;
+  return { ok: false, error: 'store-corrupt', storePath: store.storeError.path, message: store.storeError.message };
+}
+
+function auroraExePath(gameDir, requestedExePath, record, transaction, store) {
+  const filePath = process.platform === 'win32' ? path.win32 : path;
+  const candidates = [requestedExePath, record && record.exePath, transaction && transaction.exePath];
+  const state = loadState();
+  const scans = state.scans || {};
+  const folders = new Set([gameDir]);
+  for (const [libraryDir, savedGameDir] of Object.entries((store && store.gameDirs) || {})) {
+    if (gameKey(savedGameDir) === gameKey(gameDir)) folders.add(libraryDir);
+  }
+  for (const folder of folders) {
+    const scan = scans[keyFor(folder)];
+    if (!scan || typeof scan.exe !== 'string' || !scan.exe) continue;
+    candidates.push(filePath.isAbsolute(scan.exe) ? scan.exe : filePath.resolve(folder, scan.exe));
+  }
+  for (const candidate of candidates) {
+    if (typeof candidate === 'string' && candidate && filePath.isAbsolute(candidate) && fs.existsSync(candidate)) return candidate;
+  }
+  return null;
+}
+
+function queryPowerShellRunning() {
+  if (process.platform !== 'win32') return Promise.resolve(null);
+  return new Promise(resolve => {
+    execFile('tasklist', ['/FO', 'CSV', '/NH'], { windowsHide: true }, (error, stdout) => {
+      if (error) return resolve(null);
+      resolve(/"(?:powershell|pwsh)\.exe"/i.test(stdout));
+    });
+  });
+}
+
+async function recoverAuroraTransactions() {
+  const store = loadAurora();
+  if (store.storeError) return;
+  const countsByGame = table => Object.keys(table || {}).reduce((counts, storedPath) => {
+    const key = gameKey(storedPath);
+    if (key) counts.set(key, (counts.get(key) || 0) + 1);
+    return counts;
+  }, new Map());
+  const transactionCounts = countsByGame(store.transactions);
+  const recordCounts = countsByGame(store.records);
+  const matchingRecordKey = (table, normalized) =>
+    Object.keys(table || {}).find(storedPath => gameKey(storedPath) === normalized) || null;
+  for (const [gameDir, transaction] of Object.entries(store.transactions)) {
+    const normalized = gameKey(gameDir);
+    if (!normalized || transactionCounts.get(normalized) !== 1 || (recordCounts.get(normalized) || 0) > 1) {
+      console.error('Aurora automatic recovery skipped due to conflicting path aliases:', gameDir);
+      continue;
+    }
+    const recordKey = matchingRecordKey(store.records, normalized);
+    const exePath = auroraExePath(gameDir, null, recordKey ? store.records[recordKey] : null, transaction, store);
+    const [gameRunning, powershellRunning] = await Promise.all([
+      queryGameRunning(exePath), queryPowerShellRunning()
+    ]);
+    const backupDir = auroraBackupDir(gameDir);
+    const result = recoverTransaction(transaction, {
+      fs, path, gameDir, backupDir, gameRunning, powershellRunning
+    });
+    const latest = loadAurora();
+    if (latest.storeError) return;
+    const latestRecordKey = matchingRecordKey(latest.records, normalized) || gameDir;
+    if (result.ok) {
+      delete latest.transactions[gameDir];
+      if (result.record) latest.records[latestRecordKey] = result.record;
+      else delete latest.records[latestRecordKey];
+      saveAurora(latest);
+      try { cleanupSnapshot({ snapshotDir: result.snapshotDir }, { fs, path, backupDir }); } catch (error) { console.error('Aurora snapshot cleanup:', error.message); }
+    } else {
+      latest.transactions[gameDir] = result.transaction || transaction;
+      if (result.record) latest.records[latestRecordKey] = result.record;
+      saveAurora(latest);
+    }
+  }
 }
 
 function runPowershell(command) {
@@ -1966,7 +2063,7 @@ function enabledAuroraAddons() {
 
 function queryGameRunning(exePath) {
   if (process.platform !== 'win32' || !exePath) return Promise.resolve(null);
-  const image = path.basename(exePath);
+  const image = path.win32.basename(exePath);
   return new Promise((resolve) => {
     execFile('tasklist', ['/FI', `IMAGENAME eq ${image}`, '/NH'], { windowsHide: true }, (err, stdout) => {
       if (err) return resolve(null);
@@ -1997,19 +2094,46 @@ function rememberAuroraDir(store, libraryDir, gameDir) {
   store.gameDirs[libraryDir] = gameDir;
 }
 
+const auroraService = createAuroraService({
+  platform: process.platform,
+  loadStore: loadAurora,
+  saveStore: saveAurora,
+  validatePackage,
+  getBackupDir: auroraBackupDir,
+  getAddons: enabledAuroraAddons,
+  resolveExePath: ({ gameDir, requestedExePath, record, transaction, store }) =>
+    auroraExePath(gameDir, requestedExePath, record, transaction, store),
+  queryGameRunning,
+  queryPowerShellRunning,
+  runInstall: (input, checkpoint) => installGame(input, { fs, path, runner: runPowershell, checkpoint }),
+  runCheck: input => checkGame(input, { fs, path, runner: runPowershell }),
+  runRestore: input => restoreGame(input, { fs, path, runner: runPowershell }),
+  cleanupTransaction: (transaction, gameDir) => cleanupSnapshot(
+    { snapshotDir: transaction.snapshotDir }, { fs, path, backupDir: auroraBackupDir(gameDir) }
+  ),
+  recordHistory: (gameDir, record, action, addonFailure) => recordAurora(gameDir, record, action, addonFailure)
+});
+
 ipcMain.handle('aurora-state', () => {
   const store = loadAurora();
+  const records = { ...store.records };
+  for (const [gameDir, transaction] of Object.entries(store.transactions)) {
+    if (transaction && transaction.nextRecord) records[gameDir] = { ...transaction.nextRecord, status: 'incomplete' };
+  }
   return {
     packageRoot: store.packageRoot,
     package: validatePackage(store.packageRoot),
-    records: store.records,
-    gameDirs: store.gameDirs
+    records,
+    gameDirs: store.gameDirs,
+    storeError: store.storeError || null
   };
 });
 
 ipcMain.handle('aurora-remember-dir', (_event, libraryDir, gameDir) => {
   if (typeof libraryDir !== 'string' || typeof gameDir !== 'string') return { ok: false };
   const store = loadAurora();
+  const error = auroraStoreError(store);
+  if (error) return error;
   rememberAuroraDir(store, libraryDir, gameDir);
   saveAurora(store);
   return { ok: true, gameDir: store.gameDirs[libraryDir] || null };
@@ -2021,6 +2145,9 @@ ipcMain.handle('aurora-preset', (_event, dirName, exeName) => matchKnownGame({
 }));
 
 ipcMain.handle('aurora-choose-package', async () => {
+  const current = loadAurora();
+  const error = auroraStoreError(current);
+  if (error) return error;
   const res = await dialog.showOpenDialog(win, { properties: ['openDirectory'] });
   if (res.canceled || !res.filePaths || !res.filePaths[0]) return { ok: false, cancelled: true };
   const checked = validatePackage(res.filePaths[0]);
@@ -2032,71 +2159,13 @@ ipcMain.handle('aurora-choose-package', async () => {
 });
 
 ipcMain.handle('aurora-install', async (_event, gameDir, proxy, overwriteConfirmed, exePath) => {
-  const store = loadAurora();
-  const record = store.records[gameDir] || null;
-  const result = await installGame({
-    packageRoot: store.packageRoot,
-    gameDir,
-    backupDir: auroraBackupDir(gameDir),
-    proxy,
-    record,
-    overwriteConfirmed,
-    addons: enabledAuroraAddons(),
-    gameRunning: await queryGameRunning(exePath)
-  }, { fs, path, runner: runPowershell });
-  if (result.record) {
-    const saved = { ...result.record, status: result.ok ? 'installed' : (result.status || 'incomplete') };
-    const fresh = loadAurora();
-    fresh.records[gameDir] = saved;
-    saveAurora(fresh);
-    result.record = saved;
-  }
-  if (result.ok) {
-    const warning = recordAurora(gameDir, result.record, 'install', result.addonFailure);
-    if (warning) result.historyWarning = warning;
-  }
-  return result;
+  return auroraService.run('install', { gameDir, proxy, overwriteConfirmed, exePath });
 });
 
 ipcMain.handle('aurora-check', async (_event, gameDir, exePath) => {
-  const store = loadAurora();
-  const record = store.records[gameDir] || null;
-  if (record) {
-    const pkg = validatePackage(store.packageRoot);
-    if (!pkg.ok) return { ok: false, error: 'package-invalid', reason: pkg.reason };
-  }
-  const result = await checkGame({
-    gameDir,
-    record,
-    gameRunning: await queryGameRunning(exePath)
-  }, { fs, path, runner: runPowershell });
-  // A failed check must not replace an installed record with incomplete.
-  if (!result.ok) return result;
-  const fresh = loadAurora();
-  const prior = fresh.records[gameDir];
-  if (!prior) return result;
-  const saved = { ...prior, status: 'installed' };
-  fresh.records[gameDir] = saved;
-  saveAurora(fresh);
-  const warning = recordAurora(gameDir, saved, 'repair');
-  if (warning) result.historyWarning = warning;
-  return result;
+  return auroraService.run('check', { gameDir, exePath });
 });
 
 ipcMain.handle('aurora-restore', async (_event, gameDir, exePath) => {
-  const store = loadAurora();
-  const record = store.records[gameDir] || null;
-  const result = await restoreGame({
-    gameDir,
-    record,
-    gameRunning: await queryGameRunning(exePath)
-  }, { fs, path, runner: runPowershell });
-  if (result.ok) {
-    const fresh = loadAurora();
-    delete fresh.records[gameDir];
-    saveAurora(fresh);
-    const warning = recordAurora(gameDir, record || { files: [] }, 'restore');
-    if (warning) result.historyWarning = warning;
-  }
-  return result;
+  return auroraService.run('restore', { gameDir, exePath });
 });

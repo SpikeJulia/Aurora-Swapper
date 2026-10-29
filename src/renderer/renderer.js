@@ -4,12 +4,40 @@ const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 
 const { t, setLang, getLang, dirOf, LANGS } = window.i18n;
-const state = { games: [], recents: [], history: [], newDlss: null, log: [], theme: 'light', lang: 'en', logo: {}, groupGamesByStore: true };
-const filters = { query: '', api: 'all', dlss: 'all', addon: 'all' };
-const gameFilters = window.gameFilters;
+const packageSourcePolicy = window.auroraPackageSource || { preferredSource: language => String(language || '').toLowerCase().startsWith('zh') ? 'mirror' : 'official' };
+const state = { games: [], recents: [], history: [], newDlss: null, log: [], theme: 'light', lang: 'en', logo: {} };
+const filters = { query: '', status: 'all', api: 'all', dlss: 'all', addon: 'all' };
+const libraryModel = window.auroraLibraryModel;
+const LIBRARY_SORTS = new Set(['played', 'store', 'name-asc', 'name-desc']);
+const libraryState = {
+  aurora: null,
+  historyRows: [],
+  historyWarning: false,
+  historyUnavailable: false,
+  model: null,
+  addFeedback: null,
+  actionError: null,
+  sort: 'store',
+  sortChangeId: 0,
+  lastLaunchedAt: {}
+};
+let libraryRefreshId = 0;
+let auroraDownloadSource = null;
+let auroraDownloadBusy = false;
+let auroraAutoUpdateStarted = false;
+window.auroraGuideController = window.auroraGuideUi?.createGuideUi({
+  document, getLanguage: getLang, getPackage: () => libraryState.aurora,
+  copyText, openSource: destination => window.lab.openProject(
+    getLang().toLowerCase().startsWith('zh') || destination === 'aurora-config' ? destination : `${destination}-en`
+  )
+});
+window.auroraPackageUpdateUi = window.createAuroraUpdateUi?.({
+  getElement: $, translate: t,
+  checkUpdate: window.lab.checkAuroraPackageUpdate,
+  canCheck: () => !libraryState.aurora?.storeError,
+  onDownload: source => openAuroraPackageDownload(source)
+});
 
-const ORDER = ['Steam', 'Epic Games', 'GOG', 'Xbox', 'Ubisoft', 'Added by hand', 'My folders'];
-const rank = (l) => (ORDER.indexOf(l) === -1 ? ORDER.length : ORDER.indexOf(l));
 const short = (v) => (v ? String(v).replace(/\.0$/, '') : null);
 const initials = (name) =>
   name.replace(/[^A-Za-z0-9 ]/g, '').split(/\s+/).filter(Boolean).slice(0, 2).map((w) => w[0].toUpperCase()).join('') || '?';
@@ -84,6 +112,13 @@ for (const link of document.querySelectorAll('[data-project]')) {
   });
 }
 
+const aboutQrDialog = $('aboutQrDialog');
+$('aboutQrOpen')?.addEventListener('click', () => aboutQrDialog?.showModal());
+$('aboutQrClose')?.addEventListener('click', () => aboutQrDialog?.close());
+aboutQrDialog?.addEventListener('click', event => {
+  if (event.target === aboutQrDialog) aboutQrDialog.close();
+});
+
 // ---------------- recent game ----------------
 
 function tile(icon, key, value, sub, on) {
@@ -102,21 +137,12 @@ function ago(ts) {
   return t('agoDay', days);
 }
 
-// A game counts as done when the add-on is in place and its DLSS matches the
-// payload; that is what the pip reports.
-function isReady(g) {
-  return gameFilters.isInstalled(g, state.newDlss);
-}
-
 // Store keys are the install directory, which may be the exe folder rather than
 // the library folder. A game counts once when any installed record sits on
 // that folder or inside it.
 function auroraPathKey(value) {
-  return String(value || '').replace(/\\/g, '/').replace(/\/+$/, '').toLowerCase();
-}
-
-function auroraRecordInstalled(record) {
-  return Boolean(record) && record.status === 'installed';
+  const normalized = String(value || '').replace(/\\/g, '/').replace(/\/+$/, '');
+  return window.lab.auroraPathCaseInsensitive ? normalized.toLowerCase() : normalized;
 }
 
 function auroraCoversGame(gameDir, recordDir) {
@@ -177,16 +203,6 @@ async function auroraRestoreTarget(libraryDir) {
   return null;
 }
 
-function countAuroraInstalled(games, records) {
-  const entries = records && typeof records === 'object' ? Object.entries(records) : [];
-  return (games || []).filter((game) => entries.some(([key, record]) => {
-    if (!auroraRecordInstalled(record)) return false;
-    const dirs = [key];
-    if (typeof record.gameDir === 'string') dirs.push(record.gameDir);
-    return dirs.some((dir) => auroraCoversGame(game.dir, dir));
-  })).length;
-}
-
 function auroraPackageText(aurora) {
   const pkg = aurora && aurora.package;
   if (pkg && pkg.ok === true) return '已指定发布包';
@@ -194,42 +210,137 @@ function auroraPackageText(aurora) {
   return '发布包无效：' + (pkg && pkg.reason != null ? pkg.reason : '');
 }
 
-let auroraHomeSeq = 0;
+let packageFoldStatus = null;
+let auroraPackageExpanded = true;
 
-async function paintAuroraHome() {
-  const seq = ++auroraHomeSeq;
-  const line = $('auroraPackageLine');
-  const counts = $('auroraCounts');
-  if (!line || !counts) return;
-  let aurora = null;
-  try {
-    aurora = window.lab.auroraState ? await window.lab.auroraState() : null;
-  } catch {
-    return;
-  }
-  if (seq !== auroraHomeSeq) return;
-  line.textContent = auroraPackageText(aurora);
-  const installed = countAuroraInstalled(state.games, aurora && aurora.records);
-  counts.textContent = `已安装 ${installed} · 未安装 ${state.games.length - installed}`;
+function setAuroraPackageExpanded(expanded) {
+  auroraPackageExpanded = Boolean(expanded);
+  const details = $('auroraPackageDetails');
+  const toggle = $('auroraPackageToggle');
+  if (details) details.classList.toggle('hidden', !auroraPackageExpanded);
+  if (toggle) toggle.setAttribute('aria-expanded', String(auroraPackageExpanded));
 }
 
-function renderRecent() {
-  const rows = state.recents
-    .map((r) => ({ at: r.at, game: state.games.find((g) => g.dir === r.dir) }))
-    .filter((r) => r.game)
-    .slice(0, 8);
+function libraryCaseInsensitive() {
+  return Boolean(window.lab.auroraPathCaseInsensitive);
+}
 
-  $('recents').innerHTML = rows.length
-    ? rows.map(({ at, game }) => `
-    <article class="rcard" data-dir="${esc(game.dir)}" tabindex="0" aria-label="${esc(game.name)}" aria-haspopup="menu">
-      ${game.poster ? `<img src="${game.poster.url}" alt="">` : `<div class="initials">${esc(initials(game.name))}</div>`}
-      <div class="meta">
-        <div class="title">${esc(game.name)}</div>
-        <div class="when"><span class="ago">${ago(at)}</span><i class="pip${isReady(game) ? ' on' : ''}"></i></div>
-      </div>
-    </article>`).join('')
-    : `<p class="empty">${t('recentEmpty')}</p>`;
-  paintAuroraHome();
+function renderLibraryAttention() {
+  const node = $('libraryAttention');
+  if (!node) return;
+  const parts = [];
+  const added = libraryState.addFeedback;
+  if (libraryState.actionError) parts.push(`<span>${esc(libraryState.actionError)}</span>`);
+  if (added) {
+    parts.push(`<span>${esc(added.message)}</span><button class="ghost sm" type="button" id="viewAddedGame">查看此游戏</button>`);
+  }
+  const error = libraryState.model && libraryState.model.storeError;
+  if (error) {
+    parts.push(`<span>${esc(`Aurora 记录损坏，已禁用修改。文件：${error.path || '未知'}；${error.message || ''}`)}</span>`);
+  }
+  if (libraryState.historyWarning) parts.push(`<span>${esc(t('historySaveWarning'))}</span>`);
+  if (libraryState.historyUnavailable) parts.push('<span>操作历史暂时不可用，游戏库仍可浏览，最近操作排序已降级为名称。</span>');
+  node.innerHTML = parts.join('');
+  if (added) {
+    $('viewAddedGame').onclick = () => {
+      const dir = added.dir;
+      libraryState.addFeedback = null;
+      Object.assign(filters, { query: '', status: 'all', api: 'all', dlss: 'all', addon: 'all' });
+      $('gameSearch').value = '';
+      renderGames();
+      openSheet(dir);
+    };
+  }
+  node.classList.toggle('hidden', parts.length === 0);
+}
+
+function renderAuroraPackage(aurora) {
+  const bar = $('auroraPackageBar');
+  if (!bar || !libraryModel || !libraryModel.packagePresentation) return;
+  const presentation = libraryModel.packagePresentation(aurora || {});
+  if (presentation.state !== packageFoldStatus) {
+    packageFoldStatus = presentation.state;
+    auroraPackageExpanded = presentation.state !== 'ready';
+  }
+  setAuroraPackageExpanded(auroraPackageExpanded);
+  const title = $('auroraPackageTitle');
+  const description = $('auroraPackageDescription');
+  const button = $('libraryChooseAuroraPackage');
+  const packageRoot = aurora && aurora.packageRoot ? String(aurora.packageRoot) : '';
+  const titleByState = {
+    ready: 'Aurora 发布包已就绪',
+    missing: '未指定 Aurora 发布包',
+    invalid: 'Aurora 发布包无效',
+    corrupt: 'Aurora 记录损坏'
+  };
+  const descriptionByState = {
+    ready: packageRoot ? `当前目录：${packageRoot}` : '已指定有效的 Aurora 发布包。',
+    missing: '未指定发布包；已有安装记录仍可还原。',
+    invalid: `请更换发布包。${aurora && aurora.package && aurora.package.reason ? `原因：${aurora.package.reason}` : ''}`,
+    corrupt: `已禁用发布包选择和修改操作。文件：${aurora?.storeError?.path || '未知'}`
+  };
+  bar.classList.remove('ready', 'warning', 'error');
+  bar.classList.add(presentation.state === 'ready' ? 'ready' : presentation.state === 'corrupt' ? 'error' : 'warning');
+  bar.dataset.state = presentation.state;
+  if (title) title.textContent = titleByState[presentation.state] || 'Aurora 发布包状态未知';
+  if (description) description.textContent = descriptionByState[presentation.state] || auroraPackageText(aurora);
+  if (button) {
+    button.disabled = !presentation.canChoose;
+    button.textContent = presentation.state === 'ready' ? t('auroraReplacePackage') : t('auroraLocalPackage');
+  }
+}
+
+function normaliseAuroraResponse(response) {
+  if (response && typeof response === 'object') return response;
+  return { packageRoot: null, package: { ok: false }, records: {}, gameDirs: {}, storeError: null };
+}
+
+function normaliseHistoryResponse(response) {
+  if (!response || !Array.isArray(response.rows)) return { rows: null, warning: false };
+  return { rows: response.rows, warning: Boolean(response.warning) };
+}
+
+async function refreshLibrary() {
+  const requestId = ++libraryRefreshId;
+  let games;
+  try {
+    games = await window.lab.library();
+  } catch (error) {
+    if (requestId === libraryRefreshId) {
+      log(`游戏库读取失败：${error.message || error}`);
+    }
+    return null;
+  }
+
+  const auroraPromise = window.lab.auroraState
+    ? window.lab.auroraState().catch((error) => ({
+      packageRoot: null,
+      package: { ok: false },
+      records: {},
+      gameDirs: {},
+      storeError: { path: '', message: error.message || String(error) }
+    }))
+    : Promise.resolve(null);
+  const historyPromise = window.lab.history
+    ? window.lab.history().catch(() => null)
+    : Promise.resolve({ rows: [] });
+  const [auroraResponse, historyResponse] = await Promise.all([auroraPromise, historyPromise]);
+  if (requestId !== libraryRefreshId) return null;
+
+  state.games = libraryModel.mergeLibraryGames([], Array.isArray(games) ? games : [], libraryCaseInsensitive());
+  libraryState.aurora = normaliseAuroraResponse(auroraResponse);
+  const history = normaliseHistoryResponse(historyResponse);
+  libraryState.historyRows = history.rows;
+  libraryState.historyWarning = history.warning;
+  libraryState.historyUnavailable = history.rows === null;
+  if (history.rows) state.history = history.rows;
+  libraryState.model = rebuildLibraryModel();
+  renderAuroraPackage(libraryState.aurora);
+  window.auroraPackageUpdateUi?.render();
+  if (document.querySelector('.view.active')?.id === 'view-guide') window.auroraGuideController?.render();
+  renderLibraryAttention();
+  renderGames();
+  return libraryState.model;
 }
 
 // Why a folder cannot be patched. These arrive from the scanner as codes, and
@@ -249,10 +360,21 @@ const reasonText = (code) => (code ? (REASONS[code] ? t(REASONS[code]) : code) :
 
 const PLAY = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5.5v13l11-6.5z"/></svg>';
 
-function cardMarkup(g) {
+function auroraStatusLabel(status) {
+  return t({
+    installed: 'auroraInstalled',
+    missing: 'auroraMissing',
+    incomplete: 'auroraIncomplete',
+    unknown: 'auroraUnknown'
+  }[status] || 'auroraUnknown');
+}
+
+function cardMarkup(item) {
+  const g = item.game || item;
   const s = g.cached;
-  const api = s ? (s.api || reasonText(s.reason) || '—') : t('scanning');
+  const api = item.api || (s ? (s.api || reasonText(s.reason) || '—') : t('scanning'));
   const dx12 = Boolean(s && s.dx12);
+  const auroraStatus = item.auroraStatus || 'missing';
   const play = s && s.ok && s.exe
     ? `<button class="play" data-act="launch" title="启动" aria-label="启动">${PLAY}</button>`
     : '';
@@ -262,7 +384,7 @@ function cardMarkup(g) {
     : `<div class="poster"><div class="placeholder">${initials(g.name)}</div>${play}</div>`;
 
   return `
-    <article class="card${dx12 ? ' dx12' : ''}${s && !s.ok ? ' unsupported' : ''}" data-dir="${esc(g.dir)}" tabindex="0" aria-label="${esc(g.name)}" aria-haspopup="menu">
+    <article class="card${dx12 ? ' dx12' : ''}${s && !s.ok ? ' unsupported' : ''}" data-dir="${esc(g.dir)}" data-aurora-status="${auroraStatus}" tabindex="0" aria-label="${esc(g.name)}" aria-haspopup="menu">
       <div class="tools">
         <button class="tool" data-act="poster" title="${esc(t('menuPoster'))}">
           <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="10" r="1.6"/><path d="m4 18 5-5 4 4 3-3 4 4"/></svg>
@@ -277,6 +399,7 @@ function cardMarkup(g) {
       <span class="badge${dx12 ? ' dx12' : ''}">${esc(api)}</span>
       ${poster}
       <div class="name">${esc(g.name)}</div>
+      <span class="aurora-status ${auroraStatus}">${esc(auroraStatusLabel(auroraStatus))}</span>
     </article>`;
 }
 
@@ -291,103 +414,161 @@ function fillFilter(id, options, selected) {
   element.value = selected;
 }
 
+function rebuildLibraryModel() {
+  libraryState.model = libraryModel.buildLibraryModel({
+    games: state.games,
+    aurora: libraryState.aurora || { records: {} },
+    historyRows: libraryState.historyUnavailable ? null : libraryState.historyRows,
+    lastLaunchedAt: libraryState.lastLaunchedAt,
+    filters,
+    sort: libraryState.sort || 'store',
+    caseInsensitive: libraryCaseInsensitive()
+  });
+  return libraryState.model;
+}
+
 function renderGameFilters() {
   $('gameSearch').placeholder = t('searchGamesHint');
-  const apis = [
-    ['all', t('allApis')], ['dx11-dx12', 'DirectX 11 / 12'],
-    ...['DirectX 12', 'DirectX 11', 'DirectX 10', 'DirectX 9', 'DirectX 8', 'Vulkan', 'OpenGL'].map((api) => [api, api]),
-    ['no-graphics-exe', t('rNoGraphics')], ['renderer-in-dll', t('rRendererInDll')], ['no-exe', t('rNoExe')],
-    ['pending', t('scanning')]
-  ];
-  for (const game of state.games) {
-    const api = gameFilters.apiKey(game);
-    if (!apis.some(([value]) => value === api)) apis.push([api, reasonText(game.cached?.reason) || game.cached?.api || t('unknownApi')]);
+  const model = libraryState.model || rebuildLibraryModel();
+  const apis = [['all', t('allApis')]];
+  for (const api of [...new Set(model.items.map((item) => item.api).filter(Boolean))]) {
+    if (!apis.some(([value]) => value === api)) apis.push([api, reasonText(api) || api]);
   }
-  if (!apis.some(([value]) => value === filters.api)) apis.push([filters.api, reasonText(filters.api)]);
+  if (!apis.some(([value]) => value === filters.api)) apis.push([filters.api, reasonText(filters.api) || filters.api]);
   fillFilter('gameApi', apis, filters.api);
 
-  const versions = gameFilters.versions(state.games);
-  if (filters.dlss.startsWith('version:') && !versions.includes(filters.dlss.slice(8))) versions.push(filters.dlss.slice(8));
+  const versions = [...new Set(model.items.map((item) => item.game.cached?.dlss || item.game.dlss).filter(Boolean))];
+  if (String(filters.dlss).startsWith('version:') && !versions.includes(filters.dlss.slice(8))) versions.push(filters.dlss.slice(8));
   fillFilter('gameDlss', [
-    ['all', t('allDlss')], ['ready', t('filterReady')],
-    ['present', t('hasDlss')], ['absent', t('noDlss')],
-    ['installed', t('dlssCurrent')], ...versions.map((v) => ['version:' + v, 'DLSS ' + v])
+    ['all', t('allDlss')], ['present', t('hasDlss')], ['absent', t('noDlss')],
+    ...versions.map((v) => ['version:' + v, 'DLSS ' + v])
   ], filters.dlss);
   fillFilter('gameAddon', [
     ['all', t('allAddons')], ['present', t('addonPresent')], ['absent', t('addonAbsent')]
   ], filters.addon);
-  $('clearGameFilters').disabled = !filters.query && ['api', 'dlss', 'addon'].every((key) => filters[key] === 'all');
+  $('clearGameFilters').disabled = !filters.query && filters.status === 'all'
+    && ['api', 'dlss', 'addon'].every((key) => filters[key] === 'all');
+
   const quick = [
-    ['api', 'DirectX 12', t('dx12Count', state.games.filter((g) => gameFilters.apiKey(g) === 'DirectX 12').length)],
-    ['dlss', 'ready', t('readyFor', state.games.filter(gameFilters.canInstall).length)],
-    ['dlss', 'present', t('dlssCount', state.games.filter(gameFilters.hasDlss).length)]
+    ['all', t('auroraAll', model.counts.all)],
+    ['installed', t('auroraInstalledCount', model.counts.installed)],
+    ['missing', t('auroraMissingCount', model.counts.missing)],
+    ['incomplete', t('auroraIncompleteCount', model.counts.incomplete)]
   ];
   const chips = $('gameQuickFilters');
-  if (!chips.children.length) {
+  if (chips.children.length !== quick.length) {
     chips.innerHTML = quick.map(() => '<button type="button" class="filter-chip"></button>').join('');
   }
-  quick.forEach(([key, value, label], index) => {
+  quick.forEach(([value, label], index) => {
     const chip = chips.children[index];
-    chip.dataset.filter = key;
-    chip.dataset.value = value;
+    chip.dataset.status = value;
     chip.textContent = label;
-    chip.setAttribute('aria-pressed', String(filters[key] === value));
+    chip.setAttribute('aria-pressed', String(filters.status === value));
   });
 }
 
+let libraryToolsExpanded = true;
+
+function updateLibraryToolsPresentation() {
+  const toggle = $('libraryToolsToggle');
+  const body = $('libraryToolsBody');
+  const active = $('libraryToolsActive');
+  const hasHiddenFilters = Boolean(
+    String(filters.query || '').trim() ||
+    filters.api !== 'all' || filters.dlss !== 'all' || filters.addon !== 'all'
+  );
+  if (body) body.classList.toggle('hidden', !libraryToolsExpanded);
+  if (toggle) toggle.setAttribute('aria-expanded', String(libraryToolsExpanded));
+  if (active) active.classList.toggle('hidden', libraryToolsExpanded || !hasHiddenFilters);
+}
+
+function setLibraryToolsExpanded(expanded) {
+  libraryToolsExpanded = Boolean(expanded);
+  updateLibraryToolsPresentation();
+}
+
 function renderGames() {
-  const focusedGroup = document.activeElement?.dataset.readyFilter;
+  const model = rebuildLibraryModel();
   renderGameFilters();
-  const visible = state.games.filter((g) => gameFilters.matches(g, filters, state.newDlss));
+  updateLibraryToolsPresentation();
+  $('gameSortHint')?.classList.toggle('hidden', libraryState.sort !== 'played');
+  const visible = model.visible;
   let sections;
-  if (state.groupGamesByStore) {
+  if (libraryState.sort === 'store') {
     const groups = new Map();
-    for (const game of visible) {
-      if (!groups.has(game.launcher)) groups.set(game.launcher, []);
-      groups.get(game.launcher).push(game);
+    for (const item of visible) {
+      const launcher = item.game.launcher;
+      if (!groups.has(launcher)) groups.set(launcher, []);
+      groups.get(launcher).push(item);
     }
-    sections = [...groups].sort((a, b) => rank(a[0]) - rank(b[0]));
+    sections = [...groups];
   } else {
-    // Sort only the filtered copy. Keep each game's source and the stored
-    // library intact so switching categories back on restores its sections.
-    const byName = new Intl.Collator(state.lang, { numeric: true, sensitivity: 'base' });
-    visible.sort((a, b) => byName.compare(a.name, b.name));
     sections = visible.length ? [[null, visible]] : [];
   }
 
-  $('groups').innerHTML = sections
-    .map(([launcher, list]) => {
-      if (launcher === null) return `<div class="grid">${list.map(cardMarkup).join('')}</div>`;
-      const ready = list.filter(gameFilters.canInstall).length;
-      return `<section class="group">
-        <div class="group-head"><h4>${esc(launcher)}</h4><span class="count">${list.length}</span>
-        <button type="button" class="ready filter-chip" data-ready-filter="${esc(launcher)}" aria-pressed="${filters.dlss === 'ready'}">${t('readyFor', ready)}</button></div>
-        <div class="grid">${list.map(cardMarkup).join('')}</div>
-      </section>`;
-    }).join('') || `<div class="glass games-empty"><h4>${t('noMatchingGames')}</h4><p>${t('changeFilters')}</p></div>`;
-
-  $('gamesCount').textContent = t('filteredCount', visible.length, state.games.length);
-  if (focusedGroup !== undefined) {
-    [...$('groups').querySelectorAll('[data-ready-filter]')]
-      .find((button) => button.dataset.readyFilter === focusedGroup)?.focus({ preventScroll: true });
+  let empty = '';
+  if (!model.items.length) {
+    empty = `<div class="glass games-empty"><h4>${t('libraryEmpty')}</h4><p>${t('addGameHint')}</p><div class="row games-empty-actions"><button type="button" class="glass-btn sm" id="emptyAddGame">${t('addGameSingle')}</button><button type="button" class="ghost sm" id="emptyAddFolder">${t('addFolder')}</button></div></div>`;
+  } else if (!visible.length) {
+    empty = `<div class="glass games-empty"><h4>${t('noMatchingGames')}</h4><p>${t('changeFilters')}</p><button type="button" class="ghost sm" id="emptyClearFilters">${t('clearFilters')}</button></div>`;
   }
+  $('groups').innerHTML = sections.map(([launcher, list]) => {
+    if (launcher === null) return `<div class="grid">${list.map(cardMarkup).join('')}</div>`;
+    return `<section class="group">
+      <div class="group-head"><h4>${esc(launcher)}</h4><span class="count">${list.length}</span></div>
+      <div class="grid">${list.map(cardMarkup).join('')}</div>
+    </section>`;
+  }).join('') || empty;
+  $('gamesCount').textContent = t('filteredCount', visible.length, model.items.length);
+  $('emptyAddGame')?.addEventListener('click', addSingleGame);
+  $('emptyAddFolder')?.addEventListener('click', addGameFolder);
+  $('emptyClearFilters')?.addEventListener('click', () => $('clearGameFilters').click());
 }
 
+$('auroraPackageToggle').onclick = () => setAuroraPackageExpanded(!auroraPackageExpanded);
+$('libraryToolsToggle').onclick = () => setLibraryToolsExpanded(!libraryToolsExpanded);
 $('gameSearch').oninput = (event) => { filters.query = event.target.value; renderGames(); };
 for (const [id, key] of [['gameApi', 'api'], ['gameDlss', 'dlss'], ['gameAddon', 'addon']]) {
   $(id).onchange = (event) => { filters[key] = event.target.value; renderGames(); };
 }
+$('gameSort').onchange = async (event) => {
+  const selected = event.target.value;
+  if (!LIBRARY_SORTS.has(selected)) {
+    event.target.value = libraryState.sort;
+    return;
+  }
+  const previous = libraryState.sort;
+  const requestId = ++libraryState.sortChangeId;
+  libraryState.sort = selected;
+  renderGames();
+  try {
+    const persisted = await window.lab.setLibrarySort(selected);
+    if (requestId !== libraryState.sortChangeId) return;
+    if (persisted !== selected) throw new Error('排序设置未能保存');
+  } catch (error) {
+    if (requestId !== libraryState.sortChangeId) return;
+    libraryState.sort = previous;
+    event.target.value = previous;
+    renderGames();
+    log(`排序设置保存失败：${error.message || error}`);
+  }
+};
+$('moreGameFilters').onclick = () => {
+  const panel = $('gameAdvanced');
+  const open = panel.classList.contains('hidden');
+  panel.classList.toggle('hidden', !open);
+  $('moreGameFilters').setAttribute('aria-expanded', String(open));
+};
 $('clearGameFilters').onclick = () => {
-  Object.assign(filters, { query: '', api: 'all', dlss: 'all', addon: 'all' });
+  Object.assign(filters, { query: '', status: 'all', api: 'all', dlss: 'all', addon: 'all' });
   $('gameSearch').value = '';
   renderGames();
   $('gameSearch').focus();
 };
 $('gameQuickFilters').onclick = (event) => {
-  const button = event.target.closest('[data-filter]');
+  const button = event.target.closest('[data-status]');
   if (!button) return;
-  const { filter, value } = button.dataset;
-  filters[filter] = filters[filter] === value ? 'all' : value;
+  filters.status = button.dataset.status;
   renderGames();
 };
 
@@ -544,6 +725,121 @@ function auroraPackageReason(aurora) {
   return '';
 }
 
+async function chooseAuroraPackage(buttonId = 'libraryChooseAuroraPackage') {
+  const button = $(buttonId);
+  if (button) button.disabled = true;
+  let picked = null;
+  try {
+    picked = window.lab.chooseAuroraPackage ? await window.lab.chooseAuroraPackage() : null;
+    if (picked && picked.cancelled) {
+      lastAuroraPackagePick = null;
+      log('已取消选择 Aurora 发布包。');
+    } else if (picked && picked.ok === true) {
+      lastAuroraPackagePick = null;
+      log(`Aurora 发布包已更新：${picked.packageRoot || '已指定'}`);
+    } else if (picked && picked.reason) {
+      lastAuroraPackagePick = picked;
+      log(`Aurora 发布包无效：${picked.reason}`);
+    } else if (picked && picked.error) {
+      lastAuroraPackagePick = picked;
+      log(`Aurora 记录不可修改：${picked.error}`);
+    }
+  } catch (error) {
+    lastAuroraPackagePick = { ok: false, reason: error.message || String(error) };
+    log(`选择 Aurora 发布包失败：${error.message || error}`);
+  }
+  await refreshLibrary();
+  if (picked?.ok) await window.auroraPackageUpdateUi?.refresh();
+  return picked;
+}
+
+function auroraSourceLabel(source) {
+  return source === 'mirror' ? t('auroraSourceMirror') : t('auroraSourceOfficial');
+}
+
+function updateAuroraDownloadSource(source) {
+  auroraDownloadSource = source === 'mirror' ? 'mirror' : 'official';
+  for (const button of document.querySelectorAll('.aurora-source-option')) {
+    const active = button.dataset.source === auroraDownloadSource;
+    button.classList.toggle('active', active);
+    button.setAttribute('aria-pressed', String(active));
+  }
+  const status = $('auroraPackageDownloadStatus');
+  if (status && !auroraDownloadBusy) status.textContent = `${t('auroraSourceSelected')}: ${auroraSourceLabel(auroraDownloadSource)}`;
+}
+
+function openAuroraPackageDownload(source) {
+  if (auroraDownloadBusy) return;
+  auroraDownloadSource = source === 'mirror' || source === 'official' ? source : packageSourcePolicy.preferredSource(getLang());
+  updateAuroraDownloadSource(auroraDownloadSource);
+  $('auroraPackageDownloadProgress').style.width = '0%';
+  $('auroraPackageDownloadOverlay').classList.remove('hidden');
+  $('auroraPackageDownloadStart').focus();
+}
+
+function closeAuroraPackageDownload() {
+  if (auroraDownloadBusy) return;
+  $('auroraPackageDownloadOverlay').classList.add('hidden');
+}
+
+function auroraDownloadProgress(progress) {
+  if (!progress || !auroraDownloadBusy) return;
+  const total = Number(progress.total) || 0;
+  const received = Number(progress.received) || 0;
+  const percent = total > 0 ? Math.min(100, Math.round(received / total * 100)) : 0;
+  $('auroraPackageDownloadProgress').style.width = `${percent}%`;
+  const status = $('auroraPackageDownloadStatus');
+  if (status) status.textContent = progress.phase === 'verifying'
+    ? t('auroraDownloadVerifying')
+    : progress.phase === 'ready' ? t('auroraDownloadReadyEnabled') : `${t('auroraDownloadProgress')} ${percent}%`;
+}
+
+async function startAuroraPackageDownload() {
+  if (auroraDownloadBusy) return;
+  auroraDownloadBusy = true;
+  const start = $('auroraPackageDownloadStart');
+  const cancel = $('auroraPackageDownloadCancel');
+  start.disabled = true;
+  for (const button of document.querySelectorAll('.aurora-source-option')) button.disabled = true;
+  cancel.disabled = false;
+  $('auroraPackageDownloadProgress').style.width = '0%';
+  $('auroraPackageDownloadStatus').textContent = t('auroraDownloadWorking');
+  try {
+    const result = await window.lab.downloadAuroraPackage(auroraDownloadSource);
+    if (result && result.ok) {
+      lastAuroraPackagePick = null;
+      log(`${t('auroraDownloadSuccess')}: ${result.version || 'latest'}`);
+      $('auroraPackageDownloadOverlay').classList.add('hidden');
+      await refreshLibrary();
+      await window.auroraPackageUpdateUi?.refresh();
+      if (document.querySelector('.view.active')?.id === 'view-settings') await renderSettings();
+    } else if (result && result.code === 'cancelled') {
+      $('auroraPackageDownloadStatus').textContent = t('auroraDownloadCancelled');
+      log(t('auroraDownloadCancelled'));
+    } else {
+      const message = result?.message || result?.code || t('auroraDownloadFailed');
+      $('auroraPackageDownloadStatus').textContent = `${t('auroraDownloadFailed')}: ${message}`;
+      log(`${t('auroraDownloadFailed')}: ${message}`);
+    }
+  } catch (error) {
+    const message = error.message || String(error);
+    $('auroraPackageDownloadStatus').textContent = `${t('auroraDownloadFailed')}: ${message}`;
+    log(`${t('auroraDownloadFailed')}: ${message}`);
+  } finally {
+    auroraDownloadBusy = false;
+    start.disabled = false;
+    cancel.disabled = false;
+    for (const button of document.querySelectorAll('.aurora-source-option')) button.disabled = false;
+  }
+}
+
+async function cancelAuroraPackageDownload() {
+  if (!auroraDownloadBusy) return closeAuroraPackageDownload();
+  $('auroraPackageDownloadCancel').disabled = true;
+  $('auroraPackageDownloadStatus').textContent = t('auroraDownloadCancelling');
+  try { await window.lab.cancelAuroraPackageDownload(); } catch { /* The running request reports its final state. */ }
+}
+
 async function renderSettings() {
   const info = await window.lab.settings();
   let aurora = { packageRoot: null };
@@ -553,26 +849,19 @@ async function renderSettings() {
       if (fresh && typeof fresh === 'object') aurora = fresh;
     }
   } catch { /* The picker still opens if the store cannot be read. */ }
+  libraryState.aurora = normaliseAuroraResponse(aurora);
   const packagePath = aurora.packageRoot == null ? '' : String(aurora.packageRoot);
   const packageReason = auroraPackageReason(aurora);
   $('settings').innerHTML = `
     <div class="set-row"><div><div class="k">Aurora 发布包</div>
       <div class="v"><code id="auroraPackagePath">${esc(packagePath)}</code></div>
-      ${packageReason ? `<div class="v" id="auroraPackageReason">${esc(packageReason)}</div>` : ''}</div>
-      <button class="ghost sm" id="chooseAuroraPackage" type="button">指定 Aurora 发布包</button></div>
-    <div class="set-row"><div><div class="k">${t('setGroupGames')}</div>
-      <div class="v" id="setGroupGamesHint">${t('setGroupGamesHint')}</div></div>
-      <button class="setting-switch" id="setGroupGames" type="button" role="switch"
-        aria-checked="${info.groupGamesByStore !== false}" aria-label="${t('setGroupGames')}" aria-describedby="setGroupGamesHint">
-        <span class="knob"></span>
-      </button></div>
-    <div class="set-row"><div><div class="k">${t('setNotices')}</div>
-      <div class="v" id="setNoticesHint">${t('setNoticesHint')}</div></div>
-      <button class="setting-switch" id="setNotices" type="button" role="switch"
-        aria-checked="${(await window.lab.communityNoticeSettings()).on ? 'true' : 'false'}"
-        aria-label="${t('setNotices')}" aria-describedby="setNoticesHint">
-        <span class="knob"></span>
-      </button></div>
+      ${packageReason ? `<div class="v" id="auroraPackageReason">${esc(packageReason)}</div>` : ''}
+      <div class="v aurora-update-status" id="settingsAuroraUpdateStatus" role="status" aria-live="polite"></div></div>
+      <div class="row aurora-setting-actions">
+        <button class="ghost sm" id="chooseAuroraPackage" type="button"${aurora.storeError ? ' disabled' : ''}>${t('auroraLocalPackage')}</button>
+        <button class="ghost sm" id="settingsCheckAuroraUpdate" type="button"${aurora.storeError ? ' disabled' : ''}>${t('auroraCheckUpdate')}</button>
+        <button class="glass-btn sm" id="downloadAuroraPackage" type="button"${aurora.storeError ? ' disabled' : ''}>${t('auroraDownloadPackage')}</button>
+      </div></div>
     <div class="set-row"><div><div class="k">${t('setTray')}</div>
       <div class="v" id="setTrayHint">${t('setTrayHint')}</div></div>
       <button class="setting-switch" id="setTray" type="button" role="switch"
@@ -618,28 +907,11 @@ async function renderSettings() {
     <div class="set-row"><div><div class="k">${t('setPosters')}</div><div class="v">${esc(info.posterDir)}</div></div>
       <span class="d">${t('setSaved', info.posterCount)}</span></div>`;
   $('chooseAuroraPackage').onclick = async () => {
-    const button = $('chooseAuroraPackage');
-    if (button) button.disabled = true;
-    try {
-      const picked = window.lab.chooseAuroraPackage ? await window.lab.chooseAuroraPackage() : null;
-      if (picked && typeof picked === 'object' && !picked.cancelled) lastAuroraPackagePick = picked.ok === true ? null : picked;
-    } catch (error) {
-      log(error.message);
-    }
+    await chooseAuroraPackage('chooseAuroraPackage');
     await renderSettings();
-    renderRecent();
   };
-  // Turning these off stops the asking as well as the showing: the poll in
-  // the main process reads the same setting.
-  $('setNotices').onclick = async () => {
-    const toggle = $('setNotices');
-    const on = toggle.getAttribute('aria-checked') !== 'true';
-    toggle.disabled = true;
-    try {
-      const answer = await window.lab.communityNoticeSettings(on);
-      toggle.setAttribute('aria-checked', String(answer.on));
-    } finally { toggle.disabled = false; }
-  };
+  $('downloadAuroraPackage').onclick = openAuroraPackageDownload;
+  window.auroraPackageUpdateUi?.render();
   $('setTray').onclick = async () => {
     const toggle = $('setTray');
     const on = toggle.getAttribute('aria-checked') !== 'true';
@@ -649,20 +921,6 @@ async function renderSettings() {
     } catch (error) {
       log(error.message);
     } finally { toggle.disabled = false; }
-  };
-  $('setGroupGames').onclick = async () => {
-    const toggle = $('setGroupGames');
-    const enabled = toggle.getAttribute('aria-checked') !== 'true';
-    toggle.disabled = true;
-    try {
-      state.groupGamesByStore = await window.lab.setGroupGamesByStore(enabled);
-      toggle.setAttribute('aria-checked', String(state.groupGamesByStore));
-      renderGames(); // Presentation only: no discovery, rescan or filter reset.
-    } catch (error) {
-      log(error.message);
-    } finally {
-      toggle.disabled = false;
-    }
   };
   $('setAutoScan').onclick = async () => {
     const toggle = $('setAutoScan');
@@ -716,7 +974,6 @@ async function scanAll() {
     game.cached = await window.lab.scan(game.dir);
     setStatus(t('scanning'), (++scanned / state.games.length) * 100);
     renderGames();
-    renderRecent();
   }
   setStatus(t('ready'), 100);
   log(t('libReady', state.games.length, state.games.filter((g) => g.cached && g.cached.dx12).length));
@@ -738,7 +995,6 @@ async function fetchArt() {
     if (art && art.cover) {
       game.poster = { url: art.cover, tall: true, custom: false };
       renderGames();
-      renderRecent();
     }
     setStatus(t('fetchingArt'), (++done / missing.length) * 100);
   }
@@ -746,32 +1002,110 @@ async function fetchArt() {
   log(t('artFound', missing.filter((g) => g.poster && g.poster.tall).length, missing.length));
 }
 
-async function load() {
+async function load({ forceScan = false } = {}) {
   setStatus(t('scanning'), 5);
-  state.games = await window.lab.library();
-  state.recents = await window.lab.recents();
-  state.newDlss = (await window.lab.details(state.games[0] ? state.games[0].dir : '')).newDlss;
+  const model = await refreshLibrary();
+  if (!model) return;
+  if (!auroraAutoUpdateStarted) {
+    auroraAutoUpdateStarted = true;
+    window.auroraPackageUpdateUi?.check();
+  }
+  if (forceScan) {
+    for (const game of state.games) game.cached = null;
+    renderGames();
+  }
+  try {
+    state.newDlss = (await window.lab.details(state.games[0] ? state.games[0].dir : '')).newDlss;
+  } catch { state.newDlss = null; }
   renderGames();
-  renderRecent();
   log(`Found ${state.games.length} games across ${new Set(state.games.map((g) => g.launcher)).size} sources`);
   await scanAll();
 }
 
+function gameAtPath(dir) {
+  const key = libraryModel.pathKey(dir, libraryCaseInsensitive());
+  return state.games.find((game) => libraryModel.pathKey(game.dir, libraryCaseInsensitive()) === key) || null;
+}
+
+async function finishAddedGame(dir) {
+  const model = await refreshLibrary();
+  if (!model) return null;
+  const feedback = libraryModel.addedGameFeedback(model, dir, libraryCaseInsensitive());
+  if (feedback.action === 'none') {
+    log(`未能将目录加入游戏库：${dir}`);
+    return null;
+  }
+  if (feedback.action === 'view') {
+    libraryState.addFeedback = { dir, message: '游戏已添加，但当前筛选条件将其隐藏。' };
+    renderLibraryAttention();
+    log(`已添加游戏，但当前筛选已隐藏：${dir}`);
+    return gameAtPath(dir);
+  }
+  log(`游戏已在库中：${dir}`);
+  return gameAtPath(dir);
+}
+
+function closeAddGameMenu() {
+  $('addGameMenuPanel').classList.add('hidden');
+  $('addGameMenu').setAttribute('aria-expanded', 'false');
+}
+
+function reportLibraryActionError(key, error) {
+  const message = t(key, error && error.message ? error.message : String(error));
+  libraryState.actionError = message;
+  renderLibraryAttention();
+  log(message);
+}
+
+async function addSingleGame() {
+  closeAddGameMenu();
+  libraryState.actionError = null;
+  renderLibraryAttention();
+  try {
+    const dir = await window.lab.addGame();
+    if (!dir) return null;
+    return await finishAddedGame(dir);
+  } catch (error) {
+    reportLibraryActionError('addGameError', error);
+    return null;
+  }
+}
+
+async function addGameFolder() {
+  closeAddGameMenu();
+  libraryState.actionError = null;
+  renderLibraryAttention();
+  try {
+    const added = await window.lab.addFolder();
+    if (added) await load();
+    return Boolean(added);
+  } catch (error) {
+    reportLibraryActionError('addFolderError', error);
+    return false;
+  }
+}
+
 async function pickGame(dir) {
+  if (!dir) {
+    log('无法读取拖入项目的目录。');
+    return;
+  }
   log(`Scanning: ${dir}`);
+  const existing = gameAtPath(dir);
+  if (!existing) {
+    const added = await window.lab.addGameByPath(dir);
+    if (!added) {
+      log('拖入的项目不是可读取的游戏目录。');
+      return;
+    }
+  }
+  const game = await finishAddedGame(dir) || gameAtPath(dir);
+  if (!game) return;
   const cached = await window.lab.scan(dir);
-  let game = state.games.find((g) => g.dir === dir);
-  if (!game) {
-    await window.lab.addGameByPath(dir);
-    state.games = await window.lab.library();
-    game = state.games.find((g) => g.dir === dir);
-  }
-  if (game) {
-    game.cached = cached;
-    renderGames();
-    log(`Game: ${cached.exe || '—'} (${cached.api || 'unknown'})`);
-    openSheet(dir);
-  }
+  game.cached = cached;
+  renderGames();
+  log(`Game: ${cached.exe || '—'} (${cached.api || 'unknown'})`);
+  openSheet(game.dir);
 }
 
 
@@ -899,6 +1233,7 @@ function wireNotes() {
 // Same seven names as src/aurora/games.js PROXY_FILES. The renderer must not
 // copy matchKnownGame; main returns that preset through auroraPreset.
 const AURORA_PROXIES = ['dxgi.dll', 'winmm.dll', 'version.dll', 'dbghelp.dll', 'd3d12.dll', 'wininet.dll', 'winhttp.dll'];
+const AURORA_RECORD_STATUSES = new Set(['installed', 'incomplete']);
 
 function pathBase(filePath) {
   const text = String(filePath || '');
@@ -924,7 +1259,7 @@ function auroraStatusText(status) {
 }
 
 async function installOptions(d, pick, dir) {
-  let aurora = { packageRoot: null, records: {}, gameDirs: {} };
+  let aurora = { packageRoot: null, records: {}, gameDirs: {}, storeError: null };
   let preset = null;
   try {
     const pending = [window.lab.auroraState ? window.lab.auroraState() : Promise.resolve(aurora)];
@@ -937,6 +1272,7 @@ async function installOptions(d, pick, dir) {
   const gameDir = remembered || auroraGameDirOf(pick, dir);
   const record = recordAt(aurora.records, gameDir);
   const status = record && record.status ? record.status : '';
+  const recordKnown = !status || AURORA_RECORD_STATUSES.has(status);
   const proxy = (record && AURORA_PROXIES.includes(record.proxy) && record.proxy)
     || (preset && AURORA_PROXIES.includes(preset.proxy) && preset.proxy)
     || 'dxgi.dll';
@@ -946,15 +1282,21 @@ async function installOptions(d, pick, dir) {
     ? '<p class="api-field" id="auroraRepairHint">若启动器验证或更新过游戏，点修复。</p>'
     : '';
   const note = preset && preset.note ? `<p class="api-field" id="auroraNote">${esc(preset.note)}</p>` : '';
+  const storeWarning = aurora.storeError
+    ? `<p class="api-field" id="auroraStoreError">Aurora 记录损坏，修改操作已禁用。文件：${esc(aurora.storeError.path || '')}；${esc(aurora.storeError.message || '')}</p>`
+    : '';
   return {
     html: `<div class="install-options">
+      ${storeWarning}
       <p class="api-field" id="auroraStatus">${esc(auroraStatusText(status))}</p>
       ${repair}
       <select id="proxyChoice">${choices}</select>
       <input id="auroraGameDir" value="${esc(gameDir)}" spellcheck="false">
       ${note}
     </div>`,
-    packageOk: Boolean(aurora.package && aurora.package.ok === true),
+    packageOk: Boolean(aurora.package && aurora.package.ok === true) && !aurora.storeError && recordKnown,
+    storeOk: !aurora.storeError,
+    recordOk: recordKnown,
     record
   };
 }
@@ -1061,9 +1403,9 @@ async function openSheet(dir, keepLog = false) {
         `<div class="filerow"><span class="f">${esc(f.rel)}</span><span class="v">${esc(f.version || '—')}</span></div>`).join('')}</div>` : ''}
 
       <div class="sheet-actions">
-        <button class="btn-install" id="doInstall"${auroraOptions.packageOk ? '' : ' disabled'}>安装 Aurora</button>
-        <button class="btn-restore" id="doRepair"${auroraOptions.packageOk && auroraOptions.record && auroraOptions.record.status ? '' : ' disabled'}>修复运行库</button>
-        <button class="btn-restore" id="doRestore"${auroraOptions.record && auroraOptions.record.status ? '' : ' disabled'}>还原原始文件</button>
+        <button class="btn-install" id="doInstall"${auroraOptions.packageOk && auroraOptions.storeOk && auroraOptions.recordOk ? '' : ' disabled'}>安装 Aurora</button>
+        <button class="btn-restore" id="doRepair"${auroraOptions.packageOk && auroraOptions.storeOk && auroraOptions.recordOk && auroraOptions.record && auroraOptions.record.status ? '' : ' disabled'}>修复运行库</button>
+        <button class="btn-restore" id="doRestore"${auroraOptions.storeOk && auroraOptions.recordOk && auroraOptions.record && auroraOptions.record.status ? '' : ' disabled'}>还原原始文件</button>
         <button class="btn-restore" id="doOpen">打开游戏目录</button>
       </div>
       <div class="job-toolbar"><button class="ghost sm" id="copyJob"${jobLines.length ? '' : ' disabled'}>${t('copyLog')}</button><button class="ghost sm" id="saveDiag">${t('saveDiagnostics')}</button></div>
@@ -1114,8 +1456,9 @@ function wireExePicker(dir) {
   };
 }
 
-function paintAuroraStatus(record, packageInfo) {
+function paintAuroraStatus(record, packageInfo, storeOk = true) {
   const status = record && record.status ? record.status : '';
+  const recordKnown = !status || ['installed', 'incomplete'].includes(status);
   const node = $('auroraStatus');
   if (node) node.textContent = auroraStatusText(status);
   const hint = $('auroraRepairHint');
@@ -1129,10 +1472,10 @@ function paintAuroraStatus(record, packageInfo) {
     }
   } else if (hint) hint.remove();
   const ready = Boolean(packageInfo && packageInfo.ok === true);
-  if ($('doInstall')) $('doInstall').disabled = !ready;
+  if ($('doInstall')) $('doInstall').disabled = !ready || !storeOk || !recordKnown;
   const missing = !status;
-  if ($('doRepair')) $('doRepair').disabled = missing || !ready;
-  if ($('doRestore')) $('doRestore').disabled = missing;
+  if ($('doRepair')) $('doRepair').disabled = missing || !ready || !storeOk || !recordKnown;
+  if ($('doRestore')) $('doRestore').disabled = missing || !storeOk || !recordKnown;
   for (const id of ['doOpen', 'proxyChoice', 'auroraGameDir', 'sheetClose', 'exeSelect']) {
     const el = $(id);
     if (el) el.disabled = false;
@@ -1141,74 +1484,141 @@ function paintAuroraStatus(record, packageInfo) {
 
 function auroraJobText(result) {
   const parts = [];
-  if (result && result.unconfirmedClose) parts.push('未能确认游戏已关闭。');
+  if (result && result.unconfirmedClose) {
+    parts.push(result.ok ? '操作已完成，但未能确认游戏已关闭。' : '未能确认游戏已关闭。');
+  }
+  if (result && result.storePath) parts.push(`记录文件：${result.storePath}`);
+  if (result && result.message && !result.output) parts.push(result.message);
+  const messages = {
+    'game-running': '游戏仍在运行，请退出游戏后重试。',
+    'powershell-running': 'Aurora 的 PowerShell 脚本仍在运行，请等待它结束后重试。',
+    'process-state-unknown': '未能确认相关进程已退出；请确认游戏和 Aurora 脚本已关闭后重试。',
+    'operation-in-progress': '这款游戏已有 Aurora 操作正在进行。',
+    'recovery-required': '存在未完成的安装事务，请先使用“还原原始文件”完成恢复。',
+    'unsafe-path': 'Aurora 文件路径不符合安全范围，已停止修改；请检查发布包或安装记录。',
+    'unsafe-transaction': '未完成事务中的恢复路径无效，自动恢复已停止；请在详情页尝试“还原原始文件”。',
+    'restore-blocked': '还原未完成；文件和安装记录均已保留。请检查脚本输出后重试。',
+    'record-key-conflict': '发现多个指向同一游戏目录的旧安装记录。为避免误用原始文件备份，已停止操作。',
+    'transaction-key-conflict': '发现多个未完成事务指向同一游戏目录，已停止操作以保留恢复数据。',
+    'overwrite-cancelled': '已取消覆盖，游戏目录未修改。',
+    'store-corrupt': 'Aurora 记录损坏，修改操作已停止。'
+  };
+  if (result && result.error) parts.push(messages[result.error] || result.error);
+  if (result && result.needsRecovery) parts.push('操作中断，恢复记录已保留；请在详情页选择“还原原始文件”。');
   if (result && result.output) parts.push(result.output);
-  else if (result && result.error) parts.push(result.error);
+  if (result && result.historyWarning) parts.push(`历史记录提示：${result.historyWarning}`);
   return parts.join('\n');
 }
 
-// Sheet actions call Aurora IPC. The right-click menu does too.
-async function runAurora(kind, dir) {
-  if (jobRunning) return;
-  const gameDir = ($('auroraGameDir') && $('auroraGameDir').value) || dir;
-  const proxy = ($('proxyChoice') && $('proxyChoice').value) || 'dxgi.dll';
-  await rememberAuroraDir(dir, gameDir);
-  const pick = sheetDetails ? chosenExe(sheetDetails, dir) : null;
-  const exePath = pick && pick.path ? pick.path : null;
+// Both the detail sheet and the game context menu go through this operation
+// boundary, so they share the same warning, recovery guidance, and job lock.
+async function runAuroraAction(kind, gameDir, options = {}) {
+  if (jobRunning) return { ok: false, error: 'operation-in-progress' };
+  const libraryDir = options.libraryDir || gameDir;
+  const sheetActive = Boolean(sheetGame && sheetGame.dir === libraryDir);
   const locked = {
     install: $('doInstall') ? $('doInstall').disabled : true,
     repair: $('doRepair') ? $('doRepair').disabled : true,
     restore: $('doRestore') ? $('doRestore').disabled : true
   };
   jobRunning = true;
-  for (const id of ['doInstall', 'doRepair', 'doRestore', 'doOpen', 'proxyChoice', 'auroraGameDir', 'sheetClose', 'exeSelect']) {
-    const el = $(id);
-    if (el) el.disabled = true;
+  let sheetControlsUpdated = false;
+  if (sheetActive) {
+    for (const id of ['doInstall', 'doRepair', 'doRestore', 'doOpen', 'proxyChoice', 'auroraGameDir', 'sheetClose', 'exeSelect']) {
+      const el = $(id);
+      if (el) el.disabled = true;
+    }
   }
   let result = null;
   try {
-    if (kind === 'install') {
-      result = await window.lab.auroraInstall(gameDir, proxy, false, exePath);
-      if (result && result.error === 'proxy-exists' && window.confirm('目标代理 DLL 已存在，是否覆盖？')) {
-        result = await window.lab.auroraInstall(gameDir, proxy, true, exePath);
+    try {
+      if (options.rememberDir) await rememberAuroraDir(options.rememberDir, gameDir);
+      const exePath = Object.prototype.hasOwnProperty.call(options, 'exePath')
+        ? options.exePath
+        : (() => {
+          const pick = sheetDetails ? chosenExe(sheetDetails, libraryDir) : null;
+          return pick && pick.path ? pick.path : null;
+        })();
+      if (kind === 'install') {
+        const proxy = options.proxy || 'dxgi.dll';
+        result = await window.lab.auroraInstall(gameDir, proxy, false, exePath);
+        if (result && result.error === 'proxy-exists' && window.confirm('目标代理 DLL 已存在，是否覆盖？')) {
+          result = await window.lab.auroraInstall(gameDir, proxy, true, exePath);
+        } else if (result && result.error === 'proxy-exists') {
+          result = { ok: false, error: 'overwrite-cancelled' };
+        }
+      } else if (kind === 'check') {
+        result = await window.lab.auroraCheck(gameDir, exePath);
+      } else if (kind === 'restore') {
+        result = await window.lab.auroraRestore(gameDir, exePath);
       }
-    } else if (kind === 'check') {
-      result = await window.lab.auroraCheck(gameDir, exePath);
-    } else if (kind === 'restore') {
-      result = await window.lab.auroraRestore(gameDir, exePath);
+    } catch (error) {
+      result = { error: error.message || String(error) };
     }
-  } catch (error) {
-    result = { error: error.message || String(error) };
-  }
-  const text = auroraJobText(result);
-  jobLines = text ? text.split('\n') : [];
-  const job = $('job');
-  if (job) job.textContent = text;
-  let record;
-  let packageInfo;
-  try {
-    const fresh = await window.lab.auroraState();
-    packageInfo = fresh && fresh.package ? fresh.package : { ok: false };
-    record = fresh && fresh.records ? recordAt(fresh.records, gameDir) : null;
-  } catch {
-    record = undefined;
-    packageInfo = undefined;
-  }
-  jobRunning = false;
-  if (result && result.ok) paintAuroraHome();
-  if (!(sheetGame && sheetGame.dir === dir)) return;
-  if (record === undefined) {
-    for (const id of ['doOpen', 'proxyChoice', 'auroraGameDir', 'sheetClose', 'exeSelect']) {
-      const el = $(id);
-      if (el) el.disabled = false;
+    const text = auroraJobText(result);
+    jobLines = text ? text.split('\n') : [];
+    const job = $('job');
+    if (sheetActive && job) job.textContent = text || (result && result.ok ? 'Aurora 操作完成。' : 'Aurora 操作未完成。');
+    if (!sheetActive) {
+      const game = state.games.find(item => item.dir === libraryDir);
+      const label = game ? game.name : gameDir;
+      const summary = text || (result && result.ok ? 'Aurora 操作完成。' : 'Aurora 操作未完成。');
+      setStatus(`${label}：${summary}`);
     }
-    if ($('doInstall')) $('doInstall').disabled = locked.install;
-    if ($('doRepair')) $('doRepair').disabled = locked.repair;
-    if ($('doRestore')) $('doRestore').disabled = locked.restore;
-    return;
+    let record;
+    let packageInfo;
+    let storeOk = true;
+    try {
+      const fresh = await window.lab.auroraState();
+      packageInfo = fresh && fresh.package ? fresh.package : { ok: false };
+      record = fresh && fresh.records ? recordAt(fresh.records, gameDir) : null;
+      storeOk = !fresh || !fresh.storeError;
+    } catch {
+      record = undefined;
+      packageInfo = undefined;
+    }
+    if (typeof refreshLibrary === 'function') await refreshLibrary();
+    if (sheetActive && sheetGame && sheetGame.dir === libraryDir) {
+      if (record === undefined) {
+        for (const id of ['doOpen', 'proxyChoice', 'auroraGameDir', 'sheetClose', 'exeSelect']) {
+          const el = $(id);
+          if (el) el.disabled = false;
+        }
+        if ($('doInstall')) $('doInstall').disabled = locked.install;
+        if ($('doRepair')) $('doRepair').disabled = locked.repair;
+        if ($('doRestore')) $('doRestore').disabled = locked.restore;
+      } else {
+        // Status comes from the stored record, not from a failed check result.
+        paintAuroraStatus(record, packageInfo, storeOk);
+      }
+      sheetControlsUpdated = true;
+    }
+    return result;
+  } finally {
+    if (sheetActive && !sheetControlsUpdated) {
+      for (const id of ['doOpen', 'proxyChoice', 'auroraGameDir', 'sheetClose', 'exeSelect']) {
+        const el = $(id);
+        if (el) el.disabled = false;
+      }
+      if ($('doInstall')) $('doInstall').disabled = locked.install;
+      if ($('doRepair')) $('doRepair').disabled = locked.repair;
+      if ($('doRestore')) $('doRestore').disabled = locked.restore;
+    }
+    jobRunning = false;
   }
-  // Status comes from the stored record, not from a failed check's return value.
-  paintAuroraStatus(record, packageInfo);
+}
+
+async function runAurora(kind, dir) {
+  if (jobRunning) return;
+  const gameDir = ($('auroraGameDir') && $('auroraGameDir').value) || dir;
+  const proxy = ($('proxyChoice') && $('proxyChoice').value) || 'dxgi.dll';
+  const pick = sheetDetails ? chosenExe(sheetDetails, dir) : null;
+  return runAuroraAction(kind, gameDir, {
+    libraryDir: dir,
+    rememberDir: dir,
+    proxy,
+    exePath: pick && pick.path ? pick.path : null
+  });
 }
 
 async function runJob(kind, dir) {
@@ -1266,10 +1676,8 @@ async function runJob(kind, dir) {
     log(`${kind === 'install' ? 'Installed' : 'Restored'}: ${dir}`);
     if ($('view-history').classList.contains('active')) await renderHistory();
     // Recent Games tracks what was actually swapped, not what was browsed.
-    state.recents = await window.lab.touch(dir);
-    renderRecent();
     const g = state.games.find((x) => x.dir === dir);
-    if (g) { g.cached = await window.lab.scan(dir); renderGames(); renderRecent(); }
+    if (g) { g.cached = await window.lab.scan(dir); renderGames(); }
     if (kind === 'restore') routeChoice.delete(dir);
     setTimeout(() => { if (sheetGame?.dir === dir) openSheet(dir, true); }, 400);
   } else {
@@ -1296,7 +1704,6 @@ $('nav').onclick = (e) => {
   const b = e.target.closest('.nav-item');
   if (b) show(b.dataset.view);
 };
-document.querySelector('.link[data-view]').onclick = () => show('games');
 
 // The wordmark is black artwork, so the dark theme gets the lifted copy.
 function paintBrand() {
@@ -1319,9 +1726,10 @@ function applyLang(code) {
   }
   // Anything drawn from data has to be rebuilt, not just relabelled.
   renderLog();
-  renderRecent();
   renderGames();
+  window.auroraPackageUpdateUi?.render();
   const view = document.querySelector('.view.active');
+  window.auroraGuideController?.render();
   if (view && view.id === 'view-history') renderHistory();
   if (view && view.id === 'view-settings') renderSettings();
   if (view && view.id === 'view-addons') renderAddons();
@@ -1407,15 +1815,27 @@ $('themeBtn').onclick = () => {
   window.lab.setTheme(state.theme);
 };
 
-$('browseBtn').onclick = async () => {
-  const dir = await window.lab.addGame();
-  if (dir) { show('home'); pickGame(dir); }
+$('addGameMenu').onclick = (event) => {
+  event.stopPropagation();
+  const panel = $('addGameMenuPanel');
+  const open = panel.classList.contains('hidden');
+  panel.classList.toggle('hidden', !open);
+  $('addGameMenu').setAttribute('aria-expanded', String(open));
 };
-$('addGame').onclick = async () => { const d = await window.lab.addGame(); if (d) load(); };
-$('addFolder').onclick = async () => { if (await window.lab.addFolder()) load(); };
+$('libraryChooseAuroraPackage').onclick = () => chooseAuroraPackage('libraryChooseAuroraPackage');
+$('libraryDownloadAuroraPackage').onclick = openAuroraPackageDownload;
+$('auroraPackageDownloadStart').onclick = startAuroraPackageDownload;
+$('auroraPackageDownloadCancel').onclick = cancelAuroraPackageDownload;
+$('auroraPackageDownloadOverlay').onclick = event => {
+  if (event.target === $('auroraPackageDownloadOverlay')) closeAuroraPackageDownload();
+};
+for (const button of document.querySelectorAll('.aurora-source-option')) {
+  button.onclick = () => updateAuroraDownloadSource(button.dataset.source);
+}
+$('addGame').onclick = addSingleGame;
+$('addFolder').onclick = addGameFolder;
 $('rescan').onclick = async () => {
-  for (const g of state.games) g.cached = null;
-  await load();
+  await load({ forceScan: true });
 };
 $('clearLog').onclick = () => { state.log = []; renderLog(); };
 $('copyLog').onclick = () => copyText(state.log.map(e => `[${e.t}] ${e.m}`).join('\n'));
@@ -1443,24 +1863,23 @@ async function performGameAction(action, dir) {
       if (!rel) return;
       const error = await window.lab.launch(dir, rel);
       if (error) throw new Error(error === 'missing' ? '找不到游戏程序' : error);
+      const playKey = String(game.key || libraryModel.pathKey(game.dir, libraryCaseInsensitive()));
+      libraryState.lastLaunchedAt[playKey] = Date.now();
+      renderGames();
     } else if (action === 'restore') {
       const target = await auroraRestoreTarget(dir);
       if (!target || !window.lab.auroraRestore) return;
-      const result = await window.lab.auroraRestore(target, null);
-      if (result && result.ok === false) throw new Error(result.error || 'restore-blocked');
-      if (result && result.ok) paintAuroraHome();
+      await runAuroraAction('restore', target, { libraryDir: dir, exePath: null });
     } else if (action === 'scan') {
       const scan = await window.lab.scan(dir);
       if (state.games.includes(game)) game.cached = scan;
       renderGames();
-      renderRecent();
       log(t('menuScanned', game.name));
     } else if (action === 'poster') {
       const url = await window.lab.setPoster(dir);
       if (url && state.games.includes(game)) {
         game.poster = { url, tall: true, custom: true };
         renderGames();
-        renderRecent();
       }
     } else if (action === 'community') {
       await window.communityUi?.openReport?.(dir);
@@ -1478,7 +1897,6 @@ async function performGameAction(action, dir) {
       await window.lab.hide(dir);
       state.games = state.games.filter(g => g.dir !== dir);
       renderGames();
-      renderRecent();
     }
   } catch (error) {
     log(t('menuActionFailed', game.name, error.message));
@@ -1617,7 +2035,7 @@ async function openGameMenu(card, position) {
   }
 }
 
-for (const container of [$('groups'), $('recents')]) {
+for (const container of [$('groups')]) {
   container.oncontextmenu = event => {
     const card = event.target.closest('.card, .rcard');
     if (!card) return;
@@ -1652,15 +2070,11 @@ $('groups').onclick = async (event) => {
   await performGameAction(act || 'details', dir);
 };
 
-$('recents').onclick = (e) => {
-  const card = e.target.closest('.rcard');
-  if (card) return performGameAction('details', card.dataset.dir);
-};
-
 $('overlay').onclick = (e) => { if (e.target === $('overlay')) closeSheet(); };
 document.addEventListener('keydown', (e) => {
   if (e.key !== 'Escape') return;
-  if (!$('dlgOverlay').classList.contains('hidden')) closeDialog();
+  if (!$('auroraPackageDownloadOverlay').classList.contains('hidden')) cancelAuroraPackageDownload();
+  else if (!$('dlgOverlay').classList.contains('hidden')) closeDialog();
   else closeSheet();
 });
 // Most job events are progress markers read as codes. The few that are
@@ -1669,8 +2083,16 @@ const SPOKEN_JOB_CODES = new Set(['historySaveWarning', 'driverNeuralFault', 'ol
 window.lab.onJob((e) => jobLog(SPOKEN_JOB_CODES.has(e.code)
   ? t(e.code, ...Object.values(e.params || {}))
   : `${e.code} ${JSON.stringify(e.params)}`));
+if (window.lab.onAuroraPackageProgress) window.lab.onAuroraPackageProgress(auroraDownloadProgress);
 
-const zone = $('dropZone');
+document.addEventListener('click', (event) => {
+  if (!event.target.closest('.add-game-wrap')) {
+    $('addGameMenuPanel').classList.add('hidden');
+    $('addGameMenu').setAttribute('aria-expanded', 'false');
+  }
+});
+
+const zone = $('groups');
 ['dragenter', 'dragover'].forEach((n) => zone.addEventListener(n, (e) => { e.preventDefault(); zone.classList.add('over'); }));
 ['dragleave', 'drop'].forEach((n) => zone.addEventListener(n, (e) => { e.preventDefault(); zone.classList.remove('over'); }));
 zone.addEventListener('drop', (e) => {
@@ -1678,6 +2100,7 @@ zone.addEventListener('drop', (e) => {
   if (!f) return;
   const dir = window.lab.pathForFile(f);
   if (dir) pickGame(dir);
+  else log('无法读取拖入项目的目录。');
 });
 document.addEventListener('dragover', (e) => e.preventDefault());
 document.addEventListener('drop', (e) => e.preventDefault());
@@ -1685,7 +2108,10 @@ document.addEventListener('drop', (e) => e.preventDefault());
 (async () => {
   const boot = await window.lab.boot();
   state.theme = boot.theme || 'light';
-  state.groupGamesByStore = boot.groupGamesByStore !== false;
+  libraryState.sort = LIBRARY_SORTS.has(boot.librarySort) ? boot.librarySort : 'store';
+  libraryState.lastLaunchedAt = boot.lastLaunchedAt && typeof boot.lastLaunchedAt === 'object'
+    && !Array.isArray(boot.lastLaunchedAt) ? boot.lastLaunchedAt : {};
+  $('gameSort').value = libraryState.sort;
   document.documentElement.dataset.theme = state.theme;
   applyLang(boot.lang || 'en');
   $('statusVersion').textContent = `v${boot.version}`;

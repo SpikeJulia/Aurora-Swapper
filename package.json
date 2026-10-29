@@ -6,7 +6,9 @@
   "main": "main.js",
   "scripts": {
     "start": "electron .",
-    "test": "node --test --test-concurrency=1 test/*.test.js",
+    "test": "npm run test:aurora",
+    "test:legacy": "node --test --test-concurrency=1 test/*.test.js",
+    "test:aurora": "node scripts/test-aurora.js",
     "test:ui": "electron scripts/test-game-filters-ui.js",
     "test:payload": "node scripts/test-feeder-payload.js",
     "test:optiscaler": "node scripts/test-optiscaler-payload.js",
@@ -72,8 +74,8 @@
       "installerIcon": "build/icon.ico",
       "uninstallerIcon": "build/icon.ico",
       "installerHeaderIcon": "build/icon.ico",
-      "deleteAppDataOnUninstall": true,
-      "artifactName": "DLSS5-Swapper-Setup-${version}.exe",
+      "deleteAppDataOnUninstall": false,
+      "artifactName": "Aurora-Swapper-Setup-${version}.exe",
       "include": "build/installer.nsh"
     }
   }
