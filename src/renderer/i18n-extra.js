@@ -29,7 +29,7 @@ add({ code: 'zh-TW', label: 'Chinese (Traditional)', native: '繁體中文', dir
   setFolders: '已掃描的資料夾', setAdd: '新增', setLibrary: '程式庫檔案', setReset: '重設',
     setRoots: '在磁碟上找到',
   setPosters: '封面', setSaved: (n) => `已儲存 ${n} 個`, setLang: '語言',
-    aboutTitle: 'DLSS 5 Swapper', aboutBody: '為你的遊戲裝上 DLSS 5，也能隨時還原。', aboutBy: '由 Rakan Alkhaldi 開發',
+    aboutTitle: 'Aurora Swapper', aboutBody: '為遊戲安裝 OptiScaler Aurora，並可隨時還原。', aboutBy: '由 spikejulia 開發',
   agoNow: '剛剛', agoMin: (n) => `${n} 分鐘前`, agoHour: (n) => `${n} 小時前`, agoDay: (n) => `${n} 天前`,
   artFound: (a, b) => `封面：${b} 個中找到 ${a} 個`, libReady: (n, d) => `程式庫就緒 — ${n} 個遊戲，${d} 個使用 DirectX 12`
 });
@@ -60,7 +60,7 @@ add({ code: 'uk', label: 'Ukrainian', native: 'Українська', dir: 'ltr'
   setFolders: 'Проскановані теки', setAdd: 'Додати', setLibrary: 'Файл бібліотеки', setReset: 'Скинути',
     setRoots: 'Знайдено на дисках',
   setPosters: 'Обкладинки', setSaved: (n) => `збережено ${n}`, setLang: 'Мова',
-    aboutTitle: 'DLSS 5 Swapper', aboutBody: 'Встановлює DLSS 5 у ваші ігри й будь-коли повертає все як було.', aboutBy: 'Автор — Rakan Alkhaldi',
+    aboutTitle: 'Aurora Swapper', aboutBody: 'Встановлює OptiScaler Aurora у ваші ігри й будь-коли повертає все як було.', aboutBy: 'Автор — spikejulia',
   agoNow: 'щойно', agoMin: (n) => `${n} хв тому`, agoHour: (n) => `${n} год тому`, agoDay: (n) => `${n} дн тому`,
   artFound: (a, b) => `Обкладинки: ${a} з ${b}`, libReady: (n, d) => `Бібліотека готова — ${n} ігор, ${d} на DirectX 12`
 });
@@ -91,7 +91,7 @@ add({ code: 'nl', label: 'Dutch', native: 'Nederlands', dir: 'ltr' }, {
   setFolders: 'Gescande mappen', setAdd: 'Toevoegen', setLibrary: 'Bibliotheekbestand', setReset: 'Herstellen',
     setRoots: 'Gevonden op je schijven',
   setPosters: 'Covers', setSaved: (n) => `${n} opgeslagen`, setLang: 'Taal',
-    aboutTitle: 'DLSS 5 Swapper', aboutBody: 'Zet DLSS 5 in je games en zet de originelen terug wanneer je wilt.', aboutBy: 'Gemaakt door Rakan Alkhaldi',
+    aboutTitle: 'Aurora Swapper', aboutBody: 'Installeert OptiScaler Aurora in je games en zet de originelen terug wanneer je wilt.', aboutBy: 'Gemaakt door spikejulia',
   agoNow: 'zojuist', agoMin: (n) => `${n} min geleden`, agoHour: (n) => `${n} u geleden`, agoDay: (n) => `${n} d geleden`,
   artFound: (a, b) => `Covers: ${a} van ${b}`, libReady: (n, d) => `Bibliotheek klaar — ${n} games, ${d} met DirectX 12`
 });
@@ -122,7 +122,7 @@ add({ code: 'cs', label: 'Czech', native: 'Čeština', dir: 'ltr' }, {
   setFolders: 'Prohledané složky', setAdd: 'Přidat', setLibrary: 'Soubor knihovny', setReset: 'Obnovit výchozí',
     setRoots: 'Nalezeno na discích',
   setPosters: 'Obaly', setSaved: (n) => `uloženo ${n}`, setLang: 'Jazyk',
-    aboutTitle: 'DLSS 5 Swapper', aboutBody: 'Nainstaluje DLSS 5 do vašich her a kdykoli vrátí původní soubory.', aboutBy: 'Vytvořil Rakan Alkhaldi',
+    aboutTitle: 'Aurora Swapper', aboutBody: 'Nainstaluje OptiScaler Aurora do vašich her a kdykoli obnoví původní soubory.', aboutBy: 'Vytvořil spikejulia',
   agoNow: 'právě teď', agoMin: (n) => `před ${n} min`, agoHour: (n) => `před ${n} h`, agoDay: (n) => `před ${n} d`,
   artFound: (a, b) => `Obaly: ${a} z ${b}`, libReady: (n, d) => `Knihovna připravena — ${n} her, ${d} na DirectX 12`
 });
@@ -153,7 +153,7 @@ add({ code: 'hu', label: 'Hungarian', native: 'Magyar', dir: 'ltr' }, {
   setFolders: 'Vizsgált mappák', setAdd: 'Hozzáadás', setLibrary: 'Könyvtárfájl', setReset: 'Alaphelyzet',
     setRoots: 'A meghajtókon találva',
   setPosters: 'Borítók', setSaved: (n) => `${n} mentve`, setLang: 'Nyelv',
-    aboutTitle: 'DLSS 5 Swapper', aboutBody: 'Telepíti a DLSS 5-öt a játékaidba, és bármikor visszaállít mindent.', aboutBy: 'Készítette: Rakan Alkhaldi',
+    aboutTitle: 'Aurora Swapper', aboutBody: 'Telepíti az OptiScaler Aurora csomagot a játékaidba, és bármikor visszaállít mindent.', aboutBy: 'Készítette: spikejulia',
   agoNow: 'az imént', agoMin: (n) => `${n} perce`, agoHour: (n) => `${n} órája`, agoDay: (n) => `${n} napja`,
   artFound: (a, b) => `Borítók: ${b} közül ${a}`, libReady: (n, d) => `Könyvtár kész — ${n} játék, ${d} DirectX 12-vel`
 });
@@ -184,7 +184,7 @@ add({ code: 'ro', label: 'Romanian', native: 'Română', dir: 'ltr' }, {
   setFolders: 'Foldere scanate', setAdd: 'Adaugă', setLibrary: 'Fișier bibliotecă', setReset: 'Resetează',
     setRoots: 'Găsite pe discuri',
   setPosters: 'Coperți', setSaved: (n) => `${n} salvate`, setLang: 'Limbă',
-    aboutTitle: 'DLSS 5 Swapper', aboutBody: 'Instalează DLSS 5 în jocurile tale și restaurează originalele oricând.', aboutBy: 'Creat de Rakan Alkhaldi',
+    aboutTitle: 'Aurora Swapper', aboutBody: 'Instalează OptiScaler Aurora în jocurile tale și restaurează originalele oricând.', aboutBy: 'Creat de spikejulia',
   agoNow: 'chiar acum', agoMin: (n) => `acum ${n} min`, agoHour: (n) => `acum ${n} h`, agoDay: (n) => `acum ${n} z`,
   artFound: (a, b) => `Coperți: ${a} din ${b}`, libReady: (n, d) => `Bibliotecă gata — ${n} jocuri, ${d} pe DirectX 12`
 });
@@ -215,7 +215,7 @@ add({ code: 'el', label: 'Greek', native: 'Ελληνικά', dir: 'ltr' }, {
   setFolders: 'Σαρωμένοι φάκελοι', setAdd: 'Προσθήκη', setLibrary: 'Αρχείο βιβλιοθήκης', setReset: 'Επαναφορά',
     setRoots: 'Βρέθηκαν στους δίσκους σας',
   setPosters: 'Εξώφυλλα', setSaved: (n) => `${n} αποθηκευμένα`, setLang: 'Γλώσσα',
-    aboutTitle: 'DLSS 5 Swapper', aboutBody: 'Βάζει το DLSS 5 στα παιχνίδια σας και επαναφέρει τα αρχικά όποτε θέλετε.', aboutBy: 'Από τον Rakan Alkhaldi',
+    aboutTitle: 'Aurora Swapper', aboutBody: 'Εγκαθιστά το OptiScaler Aurora στα παιχνίδια σας και επαναφέρει τα αρχικά όποτε θέλετε.', aboutBy: 'Από τον spikejulia',
   agoNow: 'μόλις τώρα', agoMin: (n) => `πριν ${n} λ`, agoHour: (n) => `πριν ${n} ώ`, agoDay: (n) => `πριν ${n} ημ`,
   artFound: (a, b) => `Εξώφυλλα: ${a} από ${b}`, libReady: (n, d) => `Η βιβλιοθήκη είναι έτοιμη — ${n} παιχνίδια, ${d} σε DirectX 12`
 });
@@ -246,7 +246,7 @@ add({ code: 'sv', label: 'Swedish', native: 'Svenska', dir: 'ltr' }, {
   setFolders: 'Genomsökta mappar', setAdd: 'Lägg till', setLibrary: 'Biblioteksfil', setReset: 'Återställ',
     setRoots: 'Hittade på dina enheter',
   setPosters: 'Omslag', setSaved: (n) => `${n} sparade`, setLang: 'Språk',
-    aboutTitle: 'DLSS 5 Swapper', aboutBody: 'Lägger in DLSS 5 i dina spel och återställer originalen när du vill.', aboutBy: 'Byggd av Rakan Alkhaldi',
+    aboutTitle: 'Aurora Swapper', aboutBody: 'Installerar OptiScaler Aurora i dina spel och återställer originalen när du vill.', aboutBy: 'Byggd av spikejulia',
   agoNow: 'nyss', agoMin: (n) => `${n} min sedan`, agoHour: (n) => `${n} tim sedan`, agoDay: (n) => `${n} d sedan`,
   artFound: (a, b) => `Omslag: ${a} av ${b}`, libReady: (n, d) => `Biblioteket klart — ${n} spel, ${d} med DirectX 12`
 });
@@ -277,7 +277,7 @@ add({ code: 'da', label: 'Danish', native: 'Dansk', dir: 'ltr' }, {
   setFolders: 'Scannede mapper', setAdd: 'Tilføj', setLibrary: 'Biblioteksfil', setReset: 'Nulstil',
     setRoots: 'Fundet på dine drev',
   setPosters: 'Covers', setSaved: (n) => `${n} gemt`, setLang: 'Sprog',
-    aboutTitle: 'DLSS 5 Swapper', aboutBody: 'Sætter DLSS 5 ind i dine spil og gendanner originalerne, når du vil.', aboutBy: 'Bygget af Rakan Alkhaldi',
+    aboutTitle: 'Aurora Swapper', aboutBody: 'Installerer OptiScaler Aurora i dine spil og gendanner originalerne, når du vil.', aboutBy: 'Bygget af spikejulia',
   agoNow: 'lige nu', agoMin: (n) => `${n} min siden`, agoHour: (n) => `${n} t siden`, agoDay: (n) => `${n} d siden`,
   artFound: (a, b) => `Covers: ${a} af ${b}`, libReady: (n, d) => `Bibliotek klar — ${n} spil, ${d} med DirectX 12`
 });
@@ -308,7 +308,7 @@ add({ code: 'nb', label: 'Norwegian', native: 'Norsk', dir: 'ltr' }, {
   setFolders: 'Skannede mapper', setAdd: 'Legg til', setLibrary: 'Bibliotekfil', setReset: 'Tilbakestill',
     setRoots: 'Funnet på diskene dine',
   setPosters: 'Omslag', setSaved: (n) => `${n} lagret`, setLang: 'Språk',
-    aboutTitle: 'DLSS 5 Swapper', aboutBody: 'Setter DLSS 5 inn i spillene dine og gjenoppretter originalene når du vil.', aboutBy: 'Laget av Rakan Alkhaldi',
+    aboutTitle: 'Aurora Swapper', aboutBody: 'Installerer OptiScaler Aurora i spillene dine og gjenoppretter originalene når du vil.', aboutBy: 'Laget av spikejulia',
   agoNow: 'nettopp', agoMin: (n) => `${n} min siden`, agoHour: (n) => `${n} t siden`, agoDay: (n) => `${n} d siden`,
   artFound: (a, b) => `Omslag: ${a} av ${b}`, libReady: (n, d) => `Biblioteket klart — ${n} spill, ${d} med DirectX 12`
 });
@@ -339,7 +339,7 @@ add({ code: 'fi', label: 'Finnish', native: 'Suomi', dir: 'ltr' }, {
   setFolders: 'Tarkistetut kansiot', setAdd: 'Lisää', setLibrary: 'Kirjastotiedosto', setReset: 'Nollaa',
     setRoots: 'Löytyi asemiltasi',
   setPosters: 'Kansikuvat', setSaved: (n) => `${n} tallennettu`, setLang: 'Kieli',
-    aboutTitle: 'DLSS 5 Swapper', aboutBody: 'Asentaa DLSS 5:n peleihisi ja palauttaa alkuperäiset milloin haluat.', aboutBy: 'Tekijä: Rakan Alkhaldi',
+    aboutTitle: 'Aurora Swapper', aboutBody: 'Asentaa OptiScaler Aurora -paketin peleihisi ja palauttaa alkuperäiset milloin haluat.', aboutBy: 'Tekijä: spikejulia',
   agoNow: 'juuri nyt', agoMin: (n) => `${n} min sitten`, agoHour: (n) => `${n} t sitten`, agoDay: (n) => `${n} pv sitten`,
   artFound: (a, b) => `Kansikuvat: ${a}/${b}`, libReady: (n, d) => `Kirjasto valmis — ${n} peliä, ${d} DirectX 12:lla`
 });
@@ -370,7 +370,7 @@ add({ code: 'th', label: 'Thai', native: 'ไทย', dir: 'ltr' }, {
   setFolders: 'โฟลเดอร์ที่สแกน', setAdd: 'เพิ่ม', setLibrary: 'ไฟล์คลัง', setReset: 'รีเซ็ต',
     setRoots: 'พบในไดรฟ์ของคุณ',
   setPosters: 'ภาพปก', setSaved: (n) => `บันทึกแล้ว ${n}`, setLang: 'ภาษา',
-    aboutTitle: 'DLSS 5 Swapper', aboutBody: 'ติดตั้ง DLSS 5 ให้เกมของคุณ และคืนค่าไฟล์เดิมได้ทุกเมื่อ', aboutBy: 'สร้างโดย Rakan Alkhaldi',
+    aboutTitle: 'Aurora Swapper', aboutBody: 'ติดตั้ง OptiScaler Aurora ให้เกมของคุณ และคืนค่าไฟล์เดิมได้ทุกเมื่อ', aboutBy: 'พัฒนาโดย spikejulia',
   agoNow: 'เมื่อสักครู่', agoMin: (n) => `${n} นาทีที่แล้ว`, agoHour: (n) => `${n} ชม.ที่แล้ว`, agoDay: (n) => `${n} วันที่แล้ว`,
   artFound: (a, b) => `ภาพปก: ${a} จาก ${b}`, libReady: (n, d) => `คลังพร้อมแล้ว — ${n} เกม, ${d} ใช้ DirectX 12`
 });
@@ -401,7 +401,7 @@ add({ code: 'vi', label: 'Vietnamese', native: 'Tiếng Việt', dir: 'ltr' }, {
   setFolders: 'Thư mục đã quét', setAdd: 'Thêm', setLibrary: 'Tệp thư viện', setReset: 'Đặt lại',
     setRoots: 'Tìm thấy trên ổ đĩa',
   setPosters: 'Ảnh bìa', setSaved: (n) => `đã lưu ${n}`, setLang: 'Ngôn ngữ',
-    aboutTitle: 'DLSS 5 Swapper', aboutBody: 'Cài DLSS 5 vào trò chơi của bạn và khôi phục bản gốc bất cứ lúc nào.', aboutBy: 'Thực hiện bởi Rakan Alkhaldi',
+    aboutTitle: 'Aurora Swapper', aboutBody: 'Cài OptiScaler Aurora vào trò chơi của bạn và khôi phục bản gốc bất cứ lúc nào.', aboutBy: 'Phát triển bởi spikejulia',
   agoNow: 'vừa xong', agoMin: (n) => `${n} phút trước`, agoHour: (n) => `${n} giờ trước`, agoDay: (n) => `${n} ngày trước`,
   artFound: (a, b) => `Ảnh bìa: ${a}/${b}`, libReady: (n, d) => `Thư viện sẵn sàng — ${n} trò chơi, ${d} dùng DirectX 12`
 });
@@ -432,7 +432,7 @@ add({ code: 'id', label: 'Indonesian', native: 'Bahasa Indonesia', dir: 'ltr' },
   setFolders: 'Folder yang dipindai', setAdd: 'Tambah', setLibrary: 'Berkas pustaka', setReset: 'Setel ulang',
     setRoots: 'Ditemukan di drive Anda',
   setPosters: 'Sampul', setSaved: (n) => `${n} tersimpan`, setLang: 'Bahasa',
-    aboutTitle: 'DLSS 5 Swapper', aboutBody: 'Memasang DLSS 5 di gim Anda dan mengembalikan berkas asli kapan saja.', aboutBy: 'Dibuat oleh Rakan Alkhaldi',
+    aboutTitle: 'Aurora Swapper', aboutBody: 'Memasang OptiScaler Aurora di gim Anda dan mengembalikan berkas asli kapan saja.', aboutBy: 'Dibuat oleh spikejulia',
   agoNow: 'baru saja', agoMin: (n) => `${n} mnt lalu`, agoHour: (n) => `${n} jam lalu`, agoDay: (n) => `${n} hr lalu`,
   artFound: (a, b) => `Sampul: ${a} dari ${b}`, libReady: (n, d) => `Pustaka siap — ${n} gim, ${d} pakai DirectX 12`
 });
@@ -463,7 +463,7 @@ add({ code: 'ms', label: 'Malay', native: 'Bahasa Melayu', dir: 'ltr' }, {
   setFolders: 'Folder diimbas', setAdd: 'Tambah', setLibrary: 'Fail pustaka', setReset: 'Set semula',
     setRoots: 'Dijumpai dalam pemacu anda',
   setPosters: 'Kulit', setSaved: (n) => `${n} disimpan`, setLang: 'Bahasa',
-    aboutTitle: 'DLSS 5 Swapper', aboutBody: 'Memasang DLSS 5 dalam permainan anda dan memulihkan fail asal bila-bila masa.', aboutBy: 'Dibina oleh Rakan Alkhaldi',
+    aboutTitle: 'Aurora Swapper', aboutBody: 'Memasang OptiScaler Aurora dalam permainan anda dan memulihkan fail asal bila-bila masa.', aboutBy: 'Dibina oleh spikejulia',
   agoNow: 'sebentar tadi', agoMin: (n) => `${n} min lalu`, agoHour: (n) => `${n} jam lalu`, agoDay: (n) => `${n} hari lalu`,
   artFound: (a, b) => `Kulit: ${a} daripada ${b}`, libReady: (n, d) => `Pustaka sedia — ${n} permainan, ${d} guna DirectX 12`
 });
@@ -494,7 +494,7 @@ add({ code: 'fil', label: 'Filipino', native: 'Filipino', dir: 'ltr' }, {
   setFolders: 'Mga sinuring folder', setAdd: 'Idagdag', setLibrary: 'File ng library', setReset: 'I-reset',
     setRoots: 'Nakita sa iyong mga drive',
   setPosters: 'Mga cover', setSaved: (n) => `${n} na-save`, setLang: 'Wika',
-    aboutTitle: 'DLSS 5 Swapper', aboutBody: 'Naglalagay ng DLSS 5 sa mga laro mo, at ibinabalik ang orihinal anumang oras.', aboutBy: 'Ginawa ni Rakan Alkhaldi',
+    aboutTitle: 'Aurora Swapper', aboutBody: 'Naglalagay ng OptiScaler Aurora sa mga laro mo, at ibinabalik ang orihinal anumang oras.', aboutBy: 'Ginawa ni spikejulia',
   agoNow: 'ngayon lang', agoMin: (n) => `${n} min ang nakaraan`, agoHour: (n) => `${n} oras ang nakaraan`, agoDay: (n) => `${n} araw ang nakaraan`,
   artFound: (a, b) => `Mga cover: ${a} sa ${b}`, libReady: (n, d) => `Handa na ang library — ${n} laro, ${d} sa DirectX 12`
 });
@@ -525,7 +525,7 @@ add({ code: 'hi', label: 'Hindi', native: 'हिन्दी', dir: 'ltr' }, {
   setFolders: 'स्कैन किए फ़ोल्डर', setAdd: 'जोड़ें', setLibrary: 'लाइब्रेरी फ़ाइल', setReset: 'रीसेट',
     setRoots: 'आपकी ड्राइव पर मिले',
   setPosters: 'कवर', setSaved: (n) => `${n} सहेजे`, setLang: 'भाषा',
-    aboutTitle: 'DLSS 5 Swapper', aboutBody: 'आपके गेम में DLSS 5 इंस्टॉल करता है, और जब चाहें मूल फ़ाइलें लौटा देता है।', aboutBy: 'निर्माता: Rakan Alkhaldi',
+    aboutTitle: 'Aurora Swapper', aboutBody: 'आपके गेम में OptiScaler Aurora इंस्टॉल करता है, और जब चाहें मूल फ़ाइलें लौटा देता है।', aboutBy: 'निर्माता: spikejulia',
   agoNow: 'अभी', agoMin: (n) => `${n} मिनट पहले`, agoHour: (n) => `${n} घंटे पहले`, agoDay: (n) => `${n} दिन पहले`,
   artFound: (a, b) => `कवर: ${b} में से ${a}`, libReady: (n, d) => `लाइब्रेरी तैयार — ${n} गेम, ${d} DirectX 12 पर`
 });
@@ -556,7 +556,7 @@ add({ code: 'bn', label: 'Bengali', native: 'বাংলা', dir: 'ltr' }, {
   setFolders: 'স্ক্যান করা ফোল্ডার', setAdd: 'যোগ', setLibrary: 'লাইব্রেরি ফাইল', setReset: 'রিসেট',
     setRoots: 'আপনার ড্রাইভে পাওয়া গেছে',
   setPosters: 'কভার', setSaved: (n) => `${n} সংরক্ষিত`, setLang: 'ভাষা',
-    aboutTitle: 'DLSS 5 Swapper', aboutBody: 'আপনার গেমে DLSS 5 ইনস্টল করে, আর যখন খুশি আসল ফাইল ফিরিয়ে দেয়।', aboutBy: 'তৈরি করেছেন Rakan Alkhaldi',
+    aboutTitle: 'Aurora Swapper', aboutBody: 'আপনার গেমে OptiScaler Aurora ইনস্টল করে, আর যখন খুশি আসল ফাইল ফিরিয়ে দেয়।', aboutBy: 'তৈরি করেছেন spikejulia',
   agoNow: 'এইমাত্র', agoMin: (n) => `${n} মিনিট আগে`, agoHour: (n) => `${n} ঘণ্টা আগে`, agoDay: (n) => `${n} দিন আগে`,
   artFound: (a, b) => `কভার: ${b}-এর মধ্যে ${a}`, libReady: (n, d) => `লাইব্রেরি প্রস্তুত — ${n} গেম, ${d} DirectX 12-এ`
 });
@@ -587,7 +587,7 @@ add({ code: 'fa', label: 'Persian', native: 'فارسی', dir: 'rtl' }, {
   setFolders: 'پوشه‌های بررسی‌شده', setAdd: 'افزودن', setLibrary: 'فایل کتابخانه', setReset: 'بازنشانی',
     setRoots: 'یافته‌شده در درایوهای شما',
   setPosters: 'تصاویر', setSaved: (n) => `${n} ذخیره شد`, setLang: 'زبان',
-    aboutTitle: 'DLSS 5 Swapper', aboutBody: 'DLSS 5 را در بازی‌های شما نصب می‌کند و هر وقت بخواهید همه‌چیز را برمی‌گرداند.', aboutBy: 'ساختهٔ Rakan Alkhaldi',
+    aboutTitle: 'Aurora Swapper', aboutBody: 'OptiScaler Aurora را در بازی‌های شما نصب می‌کند و هر وقت بخواهید همه‌چیز را برمی‌گرداند.', aboutBy: 'ساختهٔ spikejulia',
   agoNow: 'همین حالا', agoMin: (n) => `${n} دقیقه پیش`, agoHour: (n) => `${n} ساعت پیش`, agoDay: (n) => `${n} روز پیش`,
   artFound: (a, b) => `تصاویر: ${a} از ${b}`, libReady: (n, d) => `کتابخانه آماده است — ${n} بازی، ${d} روی DirectX 12`
 });
@@ -618,7 +618,7 @@ add({ code: 'ur', label: 'Urdu', native: 'اردو', dir: 'rtl' }, {
   setFolders: 'اسکین شدہ فولڈرز', setAdd: 'شامل کریں', setLibrary: 'لائبریری فائل', setReset: 'ری سیٹ',
     setRoots: 'آپ کی ڈرائیوز میں ملے',
   setPosters: 'تصاویر', setSaved: (n) => `${n} محفوظ`, setLang: 'زبان',
-    aboutTitle: 'DLSS 5 Swapper', aboutBody: 'آپ کے گیمز میں DLSS 5 انسٹال کرتا ہے، اور جب چاہیں اصل فائلیں واپس لے آتا ہے۔', aboutBy: 'تخلیق: Rakan Alkhaldi',
+    aboutTitle: 'Aurora Swapper', aboutBody: 'آپ کے گیمز میں OptiScaler Aurora انسٹال کرتا ہے، اور جب چاہیں اصل فائلیں واپس لے آتا ہے۔', aboutBy: 'تخلیق: spikejulia',
   agoNow: 'ابھی', agoMin: (n) => `${n} منٹ پہلے`, agoHour: (n) => `${n} گھنٹے پہلے`, agoDay: (n) => `${n} دن پہلے`,
   artFound: (a, b) => `تصاویر: ${b} میں سے ${a}`, libReady: (n, d) => `لائبریری تیار — ${n} گیمز، ${d} DirectX 12 پر`
 });
@@ -649,7 +649,7 @@ add({ code: 'bg', label: 'Bulgarian', native: 'Български', dir: 'ltr' }
   setFolders: 'Сканирани папки', setAdd: 'Добави', setLibrary: 'Файл на библиотеката', setReset: 'Нулиране',
     setRoots: 'Намерени на дисковете',
   setPosters: 'Корици', setSaved: (n) => `запазени ${n}`, setLang: 'Език',
-    aboutTitle: 'DLSS 5 Swapper', aboutBody: 'Слага DLSS 5 в игрите ви и по всяко време връща оригиналите.', aboutBy: 'Създадено от Rakan Alkhaldi',
+    aboutTitle: 'Aurora Swapper', aboutBody: 'Инсталира OptiScaler Aurora в игрите ви и по всяко време връща оригиналите.', aboutBy: 'Създадено от spikejulia',
   agoNow: 'току-що', agoMin: (n) => `преди ${n} мин`, agoHour: (n) => `преди ${n} ч`, agoDay: (n) => `преди ${n} дни`,
   artFound: (a, b) => `Корици: ${a} от ${b}`, libReady: (n, d) => `Библиотеката е готова — ${n} игри, ${d} на DirectX 12`
 });
@@ -680,7 +680,7 @@ add({ code: 'sr', label: 'Serbian', native: 'Српски', dir: 'ltr' }, {
   setFolders: 'Скениране фасцикле', setAdd: 'Додај', setLibrary: 'Датотека библиотеке', setReset: 'Ресетуј',
     setRoots: 'Пронађено на дисковима',
   setPosters: 'Омоти', setSaved: (n) => `сачувано ${n}`, setLang: 'Језик',
-    aboutTitle: 'DLSS 5 Swapper', aboutBody: 'Поставља DLSS 5 у ваше игре и у сваком тренутку враћа оригинале.', aboutBy: 'Аутор: Rakan Alkhaldi',
+    aboutTitle: 'Aurora Swapper', aboutBody: 'Инсталира OptiScaler Aurora у ваше игре и у сваком тренутку враћа оригинале.', aboutBy: 'Аутор: spikejulia',
   agoNow: 'управо сада', agoMin: (n) => `пре ${n} мин`, agoHour: (n) => `пре ${n} ч`, agoDay: (n) => `пре ${n} д`,
   artFound: (a, b) => `Омоти: ${a} од ${b}`, libReady: (n, d) => `Библиотека спремна — ${n} игара, ${d} на DirectX 12`
 });
@@ -711,7 +711,7 @@ add({ code: 'hr', label: 'Croatian', native: 'Hrvatski', dir: 'ltr' }, {
   setFolders: 'Pretražene mape', setAdd: 'Dodaj', setLibrary: 'Datoteka knjižnice', setReset: 'Poništi',
     setRoots: 'Pronađeno na diskovima',
   setPosters: 'Omoti', setSaved: (n) => `spremljeno ${n}`, setLang: 'Jezik',
-    aboutTitle: 'DLSS 5 Swapper', aboutBody: 'Postavlja DLSS 5 u vaše igre i u svakom trenutku vraća izvornike.', aboutBy: 'Izradio Rakan Alkhaldi',
+    aboutTitle: 'Aurora Swapper', aboutBody: 'Instalira OptiScaler Aurora u vaše igre i u svakom trenutku vraća izvornike.', aboutBy: 'Izradio spikejulia',
   agoNow: 'upravo sada', agoMin: (n) => `prije ${n} min`, agoHour: (n) => `prije ${n} h`, agoDay: (n) => `prije ${n} d`,
   artFound: (a, b) => `Omoti: ${a} od ${b}`, libReady: (n, d) => `Knjižnica spremna — ${n} igara, ${d} na DirectX 12`
 });
@@ -742,7 +742,7 @@ add({ code: 'sk', label: 'Slovak', native: 'Slovenčina', dir: 'ltr' }, {
   setFolders: 'Prehľadané priečinky', setAdd: 'Pridať', setLibrary: 'Súbor knižnice', setReset: 'Obnoviť',
     setRoots: 'Nájdené na diskoch',
   setPosters: 'Obaly', setSaved: (n) => `uložené ${n}`, setLang: 'Jazyk',
-    aboutTitle: 'DLSS 5 Swapper', aboutBody: 'Nainštaluje DLSS 5 do vašich hier a kedykoľvek vráti pôvodné súbory.', aboutBy: 'Vytvoril Rakan Alkhaldi',
+    aboutTitle: 'Aurora Swapper', aboutBody: 'Nainštaluje OptiScaler Aurora do vašich hier a kedykoľvek vráti pôvodné súbory.', aboutBy: 'Vytvoril spikejulia',
   agoNow: 'práve teraz', agoMin: (n) => `pred ${n} min`, agoHour: (n) => `pred ${n} h`, agoDay: (n) => `pred ${n} d`,
   artFound: (a, b) => `Obaly: ${a} z ${b}`, libReady: (n, d) => `Knižnica pripravená — ${n} hier, ${d} na DirectX 12`
 });
@@ -773,7 +773,7 @@ add({ code: 'ca', label: 'Catalan', native: 'Català', dir: 'ltr' }, {
   setFolders: 'Carpetes analitzades', setAdd: 'Afegeix', setLibrary: 'Fitxer de biblioteca', setReset: 'Reinicia',
     setRoots: 'Trobats als teus discs',
   setPosters: 'Caràtules', setSaved: (n) => `${n} desades`, setLang: 'Idioma',
-    aboutTitle: 'DLSS 5 Swapper', aboutBody: 'Instal·la DLSS 5 als teus jocs i restaura els originals quan vulguis.', aboutBy: 'Creat per Rakan Alkhaldi',
+    aboutTitle: 'Aurora Swapper', aboutBody: 'Instal·la OptiScaler Aurora als teus jocs i restaura els originals quan vulguis.', aboutBy: 'Creat per spikejulia',
   agoNow: 'ara mateix', agoMin: (n) => `fa ${n} min`, agoHour: (n) => `fa ${n} h`, agoDay: (n) => `fa ${n} d`,
   artFound: (a, b) => `Caràtules: ${a} de ${b}`, libReady: (n, d) => `Biblioteca a punt — ${n} jocs, ${d} amb DirectX 12`
 });

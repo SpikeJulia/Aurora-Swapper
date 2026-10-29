@@ -24,7 +24,8 @@
   "author": "Aurora Swapper; interface based on DLSS 5 Swapper by Rakan Alkhaldi",
   "license": "MIT",
   "dependencies": {
-    "extract-zip": "^2.0.1"
+    "extract-zip": "^2.0.1",
+    "7zip-bin": "^5.2.0"
   },
   "devDependencies": {
     "electron": "^33.2.0",

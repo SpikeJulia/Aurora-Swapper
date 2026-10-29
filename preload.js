@@ -96,6 +96,8 @@ contextBridge.exposeInMainWorld('lab', {
   auroraPathCaseInsensitive: process.platform === 'win32',
   auroraState: () => ipcRenderer.invoke('aurora-state'),
   chooseAuroraPackage: () => ipcRenderer.invoke('aurora-choose-package'),
+  downloadAuroraPackage: (source) => ipcRenderer.invoke('aurora-download-package', source),
+  cancelAuroraPackageDownload: () => ipcRenderer.invoke('aurora-cancel-package-download'),
   onAuroraPackageProgress: (handler) => ipcRenderer.on('aurora-package-progress', (_e, progress) => handler(progress)),
   auroraInstall: (gameDir, proxy, overwriteConfirmed, exePath) => ipcRenderer.invoke('aurora-install', gameDir, proxy, overwriteConfirmed, exePath),
   auroraCheck: (gameDir, exePath) => ipcRenderer.invoke('aurora-check', gameDir, exePath),

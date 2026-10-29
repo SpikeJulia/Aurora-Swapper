@@ -78,8 +78,9 @@ test('real IPC persists per-EXE choices, validates selection, uses effective rou
   assert.equal((await install('auto')).ok, true);
   assert.equal(installs.at(-1).api, 'opengl');
   assert.equal(fs.existsSync(game), false, 'mock install never creates game files');
-  for (const destination of ['github', 'releases']) assert.equal(await handlers.get('open-project')(event, destination), true);
-  assert.equal(opened.length, 2);
+  assert.equal(await handlers.get('open-project')(event, 'github'), true);
+  assert.equal(await handlers.get('open-project')(event, 'releases'), false, 'the old release page is no longer advertised');
+  assert.equal(opened.length, 1);
   assert.equal(await handlers.get('open-project')(event, 'https://example.com'), false);
   failOpen = true;
   assert.equal(await handlers.get('open-project')(event, 'github'), false);

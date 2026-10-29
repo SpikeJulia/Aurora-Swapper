@@ -69,8 +69,10 @@ test('Vulkan keeps identified DXVK proxies while unknown, wrong-bitness and Dire
   }
 });
 
-test('About links only open the project and its latest releases', () => {
-  assert.equal(projectUrl('github'), 'https://github.com/rakanki911/DLSS5-Swapper');
-  assert.equal(projectUrl('releases'), 'https://github.com/rakanki911/DLSS5-Swapper/releases/latest');
-  for (const key of ['__proto__', 'constructor', 'file:///C:/Windows', 'javascript:alert(1)', 'https://example.com', null, {}]) assert.equal(projectUrl(key), null);
+test('About links use the maintainer profile and identify both upstream projects', () => {
+  assert.equal(projectUrl('github'), 'https://github.com/spikejulia');
+  assert.equal(projectUrl('releases'), null, 'do not advertise a release page that does not exist');
+  assert.equal(projectUrl('original-swapper'), 'https://github.com/rakanki911/DLSS5-Swapper');
+  assert.equal(projectUrl('aurora-source'), 'https://github.com/abc354402600/OptiScaler-Aurora');
+  for (const key of ['coffee', '__proto__', 'constructor', 'file:///C:/Windows', 'javascript:alert(1)', 'https://example.com', null, {}]) assert.equal(projectUrl(key), null);
 });

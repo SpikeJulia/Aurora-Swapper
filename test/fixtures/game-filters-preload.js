@@ -2,7 +2,7 @@
 
 // Isolated UI test data: never load the real library, scan drives or install files.
 const { contextBridge } = require('electron');
-let groupGamesByStore = true;
+let librarySort = 'store';
 let libraryReads = 0;
 let installedRoute = null;
 let installIssue = null;
@@ -37,11 +37,11 @@ const games = [
 }));
 games.push({ name: 'No 3D executable', dir: 'C:\\FixtureGames\\no-3d', launcher: 'My folders', cached: { ok: false, reason: 'no-graphics-exe' } });
 contextBridge.exposeInMainWorld('lab', {
-  boot: async () => ({ lang: 'en', theme: 'light', version: 'test', groupGamesByStore }),
+  boot: async () => ({ lang: 'en', theme: 'light', version: 'test', librarySort, lastLaunchedAt: {} }),
   artStatus: async () => ({ available: false }),
   library: async () => { libraryReads++; return games; },
-  settings: async () => ({ groupGamesByStore, folders: [], roots: [], stateFile: 'test', posterDir: 'test', posterCount: 0, autoScanDrives: false }),
-  setGroupGamesByStore: async (enabled) => { groupGamesByStore = enabled; return enabled; },
+  settings: async () => ({ folders: [], roots: [], stateFile: 'test', posterDir: 'test', posterCount: 0, autoScanDrives: false }),
+  setLibrarySort: async (sort) => { librarySort = sort; return sort; },
   testLibraryReads: () => libraryReads,
   recents: async () => [],
   history: async () => {

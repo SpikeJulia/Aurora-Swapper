@@ -73,27 +73,77 @@
         </button>
       </div>
 
-      <!-- HOME -->
-      <section class="view active" id="view-home">
-        <div class="glass dropzone" id="dropZone">
-          <div class="dz-circle">
-            <svg viewBox="0 0 24 24"><path d="M3 8a2 2 0 0 1 2-2h5l2 2h7a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>
+      <!-- GAME LIBRARY: home and games are intentionally one view. -->
+      <section class="view active" id="view-games">
+        <div class="section-head games-heading library-heading">
+          <div>
+            <span class="eyebrow" data-i18n="libraryEyebrow">AURORA GAME LIBRARY</span>
+            <h3><span id="gamesTitle" data-i18n="gamesTitle">Game Library</span> <span class="count" id="gamesCount" role="status" aria-live="polite"></span></h3>
+            <p class="library-subtitle" data-i18n="librarySubtitle">Manage Aurora installation and recovery from one place.</p>
+          </div>
+          <div class="row library-actions">
+            <button class="ghost sm" id="rescan" data-i18n="rescan">Rescan</button>
+            <div class="add-game-wrap">
+              <button class="glass-btn sm" id="addGameMenu" aria-expanded="false" aria-controls="addGameMenuPanel" data-i18n="addGame">Add a game</button>
+              <div class="add-game-menu hidden" id="addGameMenuPanel">
+                <button type="button" id="addGame" data-i18n="addGameSingle">Add one game</button>
+                <button type="button" id="addFolder" data-i18n="addFolder">Add a folder</button>
+              </div>
+            </div>
           </div>
         </div>
 
-        <div class="section-head">
-          <h3 data-i18n="recentTitle">Recent Games</h3>
-          <button class="link" data-view="games"><span data-i18n="viewAll">View All</span> <svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg></button>
-        </div>
-
-        <div class="section-head">
-          <h3 data-i18n="logTitle">Activity Log</h3>
-          <div class="row">
-            <button class="ghost sm" id="copyLog" data-i18n="copyLog" disabled>Copy log</button>
-            <button class="ghost sm" id="clearLog" data-i18n="clear">Clear</button>
+        <div class="aurora-package-bar glass" id="auroraPackageBar">
+          <div class="aurora-package-summary">
+            <span class="package-dot" aria-hidden="true"></span>
+            <div class="package-status" role="status" aria-live="polite">
+              <strong id="auroraPackageTitle">未指定 Aurora 发布包</strong>
+              <p id="auroraPackageDescription">先在设置中指定一个有效的 Aurora 发布目录。</p>
+              <div class="aurora-update-row">
+                <span class="aurora-update-status" id="auroraUpdateStatus" role="status"></span>
+                <button class="ghost sm hidden" id="auroraUpdateAction" type="button"></button>
+              </div>
+            </div>
+            <button class="package-fold-toggle" id="auroraPackageToggle" type="button" aria-expanded="true" aria-controls="auroraPackageDetails">
+              <span data-i18n="packageOptions">发布包操作</span>
+              <svg class="collapse-chevron" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
+            </button>
+          </div>
+          <div class="aurora-package-details" id="auroraPackageDetails">
+            <div class="row aurora-package-actions">
+              <button class="ghost sm" id="libraryChooseAuroraPackage" type="button" data-i18n="auroraLocalPackage">本地指定</button>
+              <button class="ghost sm" id="libraryCheckAuroraUpdate" type="button" data-i18n="auroraCheckUpdate">检查更新</button>
+              <button class="glass-btn sm" id="libraryDownloadAuroraPackage" type="button" data-i18n="auroraDownloadPackage">下载发布包</button>
+            </div>
           </div>
         </div>
-        <div class="glass log" id="log"></div>
+
+        <div class="library-tools">
+          <button class="library-tools-toggle" id="libraryToolsToggle" type="button" aria-expanded="true" aria-controls="libraryToolsBody">
+            <span data-i18n="libraryToolsTitle">搜索与排序</span>
+            <span class="library-tools-active hidden" id="libraryToolsActive" role="status" data-i18n="libraryToolsActive">筛选已启用</span>
+            <svg class="collapse-chevron" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
+          </button>
+          <div class="library-tools-body" id="libraryToolsBody">
+            <div class="game-filters library-filters" role="search" aria-labelledby="gamesTitle">
+              <label class="game-search"><span data-i18n="searchGames">Search games</span>
+                <input id="gameSearch" type="search" autocomplete="off" spellcheck="false" aria-controls="groups">
+              </label>
+              <label class="sort-field"><span data-i18n="sortGames">Sort</span><select id="gameSort" aria-controls="groups"><option value="played" data-i18n="sortPlayed">Recently played</option><option value="store" data-i18n="sortStore">Group by store</option><option value="name-asc" data-i18n="sortNameAsc">Name A–Z</option><option value="name-desc" data-i18n="sortNameDesc">Name Z–A</option></select><small class="sort-note hidden" id="gameSortHint" data-i18n="sortPlayedHint">Only launches from this app are tracked.</small></label>
+              <button class="ghost sm" id="moreGameFilters" type="button" aria-expanded="false" aria-controls="gameAdvanced" data-i18n="moreFilters">More filters</button>
+            </div>
+            <div class="game-filters library-advanced hidden" id="gameAdvanced">
+              <label><span data-i18n="fApi">Rendering API</span><select id="gameApi" aria-controls="groups"></select></label>
+              <label><span data-i18n="filterDlss">DLSS status</span><select id="gameDlss" aria-controls="groups"></select></label>
+              <label><span data-i18n="filterAddon">Add-on</span><select id="gameAddon" aria-controls="groups"></select></label>
+              <button class="ghost sm" id="clearGameFilters" data-i18n="clearFilters">Clear filters</button>
+            </div>
+          </div>
+        </div>
+        <div class="library-status-tabs" id="gameQuickFilters" aria-label="Aurora 安装状态"></div>
+        <div class="library-attention hidden" id="libraryAttention" role="status"></div>
+        <div id="groups"></div>
+        <p class="library-drop-hint" id="libraryDropHint" data-i18n="libraryDropHint">You can also drop a game folder here to add it.</p>
       </section>
 
       <!-- GAMES -->
@@ -111,8 +161,14 @@
           <p id="guideVersionNotice" role="status"></p>
           <small id="guideOffline"></small>
         </div>
-        <div class="game-quick-filters" id="gameQuickFilters"></div>
-        <div id="groups"></div>
+        <div class="guide-search-tools">
+          <label class="guide-search"><span id="guideSearchLabel">搜索指南</span><input id="guideSearch" type="search" autocomplete="off" aria-controls="guideContent"></label>
+          <button class="ghost sm" id="guideClear" type="button">清空搜索</button>
+        </div>
+        <nav class="guide-toc" aria-labelledby="guideTocLabel"><span id="guideTocLabel">章节导航</span><div id="guideToc"></div></nav>
+        <div class="guide-controls"><span id="guideResultCount" role="status" aria-live="polite"></span><div class="row"><button class="ghost sm" id="guideExpand" type="button">展开全部</button><button class="ghost sm" id="guideCollapse" type="button">折叠全部</button></div></div>
+        <div id="guideContent"></div>
+        <footer class="glass guide-sources"><h4 id="guideSourceTitle"></h4><p id="guideSourceNote"></p><div id="guideSources"></div><p class="hint hidden" id="guideSourceError" role="status"></p></footer>
       </section>
 
       <!-- HISTORY -->
@@ -151,12 +207,49 @@
       <!-- ABOUT -->
       <section class="view" id="view-about">
         <div class="section-head"><h3 data-i18n="navAbout">About</h3></div>
-        <div class="glass pad about">
-          <p><b>Aurora Swapper</b></p>
-          <p>界面代码 MIT，基于 Rakan Alkhaldi 的 DLSS 5 Swapper。Aurora 本体 GPL-3.0，发布包不在本仓库中。</p>
+        <div class="glass pad about aurora-donation">
+          <p class="about-product"><b data-i18n="aboutTitle">Aurora Swapper</b></p>
+          <p class="about-lead" data-i18n="aboutBody">为游戏安装、修复和还原 OptiScaler Aurora。</p>
+          <div class="about-links">
+            <a class="glass-btn about-link" href="https://github.com/spikejulia" data-project="github">
+              <span data-i18n="aboutGithub">开发者 GitHub · spikejulia</span><span aria-hidden="true">↗</span>
+            </a>
+            <button class="glass-btn about-link about-link-disabled" id="aboutUnreleased" type="button" disabled>
+              <span data-i18n="aboutUnreleased">尚未发布</span>
+            </button>
+          </div>
+          <div class="about-rule" aria-hidden="true"></div>
+          <p class="dim about-support-copy" data-i18n="supportBody">Aurora Swapper 免费开源。如果它帮到了你，可以扫码支持开发。</p>
+          <div class="about-support-row">
+            <div class="about-coffee">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 8h11v7a4 4 0 0 1-4 4H9a4 4 0 0 1-4-4V8Z"/><path d="M16 10h1.5a2.5 2.5 0 0 1 0 5H16M8 4v2M12 4v2M9 22h6"/></svg>
+              <b data-i18n="supportCoffee">Buy me a coffee</b>
+            </div>
+            <button class="about-qr-trigger" id="aboutQrOpen" type="button" aria-haspopup="dialog" aria-labelledby="aboutQrOpenLabel">
+              <img class="about-qr" src="../../assets/donation/aurora-donation.png" alt="" loading="lazy">
+              <span class="about-sr-only" id="aboutQrOpenLabel" data-i18n="aboutQrOpen">放大赞赏二维码</span>
+            </button>
+          </div>
+          <p class="dim about-credit" data-i18n="aboutBy">由 spikejulia 开发</p>
+          <p class="dim about-credit" data-i18n="aboutTranslator">汉化补全：显卡长安</p>
+          <p class="about-source">
+            <span data-i18n="aboutSourceIntro">开源来源：基于</span>
+            <a href="https://github.com/rakanki911/DLSS5-Swapper" data-project="original-swapper"><span data-i18n="aboutOriginalSwapper">DLSS 5 Swapper 2.2.7（Rakan Alkhaldi，MIT）</span></a>
+            <span data-i18n="aboutSourceJoin">，并使用</span>
+            <a href="https://github.com/abc354402600/OptiScaler-Aurora" data-project="aurora-source"><span data-i18n="aboutAuroraSource">OptiScaler Aurora（GPL-3.0）</span></a><span data-i18n="aboutSourceEnd">。</span>
+          </p>
+          <p class="about-license" data-i18n="aboutLicense">本应用的 Swapper 派生界面基于 MIT 许可；Aurora 本体为 GPL-3.0。</p>
+          <p class="about-package-notice" data-i18n="aboutPackageNotice">Aurora 发布包由用户本地指定或在线下载，本应用不随包分发。</p>
+          <p class="about-link-error hidden" id="projectLinkError" role="status" data-i18n="projectLinkError">无法打开链接，请检查网络连接。</p>
         </div>
+        <dialog class="about-qr-dialog" id="aboutQrDialog" aria-labelledby="aboutQrDialogTitle" aria-describedby="aboutQrHint">
+          <button class="about-qr-close" id="aboutQrClose" type="button" aria-labelledby="aboutQrCloseLabel">
             <span aria-hidden="true">×</span>
+            <span class="about-sr-only" id="aboutQrCloseLabel" data-i18n="aboutQrClose">关闭</span>
           </button>
+          <h3 id="aboutQrDialogTitle" data-i18n="aboutQrDialogTitle">赞赏二维码</h3>
+          <img class="about-qr-expanded" src="../../assets/donation/aurora-donation.png" alt="">
+          <p class="dim" id="aboutQrHint" data-i18n="aboutQrHint">使用手机扫描二维码支持开发。</p>
         </dialog>
       </section>
     </div>
@@ -181,16 +274,26 @@
     </div>
   </div>
 
+  <div class="overlay hidden" id="auroraPackageDownloadOverlay" role="dialog" aria-modal="true" aria-labelledby="auroraPackageDownloadTitle">
     <div class="dialog aurora-package-dialog">
       <div class="aurora-dialog-head">
         <span class="eyebrow" data-i18n="auroraPackageEyebrow">AURORA RELEASE</span>
+        <h3 id="auroraPackageDownloadTitle" data-i18n="auroraDownloadTitle">下载 Aurora 发布包</h3>
       </div>
+      <p class="dlg-hint" data-i18n="auroraDownloadHint">下载后会校验 SHA-256，并在通过目录检查后启用。</p>
+      <div class="aurora-source-options" role="radiogroup" aria-label="Aurora download source">
+        <button type="button" class="aurora-source-option" id="auroraPackageSourceMirror" data-source="mirror" aria-pressed="false">
+          <b data-i18n="auroraSourceMirror">国内镜像</b><small data-i18n="auroraSourceMirrorHint">中文界面默认使用</small>
         </button>
         <button type="button" class="aurora-source-option" id="auroraPackageSourceOfficial" data-source="official" aria-pressed="false">
           <b data-i18n="auroraSourceOfficial">GitHub / 官方源</b><small data-i18n="auroraSourceOfficialHint">可手动切换</small>
         </button>
       </div>
+      <div class="aurora-download-status" id="auroraPackageDownloadStatus" role="status" aria-live="polite" data-i18n="auroraDownloadReady">准备下载最新 Aurora 发布包。</div>
+      <div class="aurora-download-progress" aria-hidden="true"><i id="auroraPackageDownloadProgress"></i></div>
       <div class="dlg-actions">
+        <button class="ghost sm" id="auroraPackageDownloadCancel" type="button" data-i18n="auroraCancelDownload">取消</button>
+        <button class="glass-btn sm" id="auroraPackageDownloadStart" type="button" data-i18n="auroraDownload">开始下载</button>
       </div>
     </div>
   </div>
@@ -254,6 +357,7 @@
 
   <script src="i18n.js"></script>
   <script src="i18n-extra.js"></script>
+  <script src="../shared/aurora-package-source.js"></script>
   <script src="../shared/feature-i18n.js"></script>
   <script src="game-filters.js"></script>
   <script src="mentions.js"></script>

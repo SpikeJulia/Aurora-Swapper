@@ -46,6 +46,7 @@ const { cleanupSnapshot } = require('./src/aurora/copy');
 const { recoverTransaction } = require('./src/aurora/transaction');
 const { readStore, writeStore } = require('./src/aurora/store');
 const { createAuroraService, gameKey } = require('./src/aurora/service');
+const { downloadAuroraPackage } = require('./src/aurora-package-download');
 const { matchKnownGame } = require('./src/aurora/games');
 const gameMenu = require('./src/core/game-menu');
 const { CommunityClient, ADMIN_TOKEN_PATTERN } = require('./src/community-client');
@@ -237,6 +238,14 @@ function payload(raw) {
 }
 
 let win = null;
+let auroraDownloadController = null;
+let auroraUpdateChecker = null;
+function getAuroraUpdateChecker() {
+  if (!auroraUpdateChecker) auroraUpdateChecker = createAuroraUpdateChecker({
+    cacheFile: path.join(app.getPath('userData'), 'aurora-update-check.json')
+  });
+  return auroraUpdateChecker;
+}
 
 const stateFile = () => path.join(app.getPath('userData'), 'library.json');
 const posterDir = () => path.join(app.getPath('userData'), 'posters');
@@ -477,7 +486,6 @@ app.whenReady().then(async () => {
   // The icon is there from launch, not only after the first close - somebody
   // who wants the app parked in the tray wants to see that it is.
   if (loadState().closeToTray !== false) ensureTray();
-  startNotices();
   try {
     overlayBridge = await require('./src/overlay-bridge')({ BrowserWindow, userData: app.getPath('userData') });
     if (quitting) overlayBridge.close();
@@ -832,31 +840,7 @@ function communityApi(chosen) {
 // id it saw, so an app closed all week is told once rather than a hundred
 // times. The wording is the renderer's job - the community feature speaks the
 // two languages its own page does, not the thirty-eight the installer needs.
-const NOTICE_EVERY = 60_000;
-let noticeTimer = null;
-let noticeBusy = false;
-
 const noticesOn = () => loadState().communityNotices !== false;
-
-async function pollNotices() {
-  if (noticeBusy || !noticesOn() || !win || win.isDestroyed()) return;
-  noticeBusy = true;
-  try {
-    // The very first look only learns where the line is. Nobody wants to be
-    // greeted by every notification they have ever earned.
-    if (await community().noticeCatchUp()) return;
-    const answer = await community().notices();
-    const fresh = (answer && answer.notices || []).filter(notice => !notice.read);
-    if (fresh.length && win && !win.isDestroyed()) win.webContents.send('community-notices', fresh);
-  } catch { /* offline, or the service is down: try again next minute */ }
-  finally { noticeBusy = false; }
-}
-
-function startNotices() {
-  if (noticeTimer) clearInterval(noticeTimer);
-  noticeTimer = setInterval(() => { pollNotices(); }, NOTICE_EVERY);
-  setTimeout(() => { pollNotices(); }, 8000);
-}
 
 // Shown only after the page has said what they should say, and marked read
 // only after they have actually been shown - a crash in between should repeat
@@ -1993,6 +1977,10 @@ function loadAurora() {
   }
   return {
     packageRoot: typeof data.packageRoot === 'string' ? data.packageRoot : null,
+    packageVersion: typeof data.packageVersion === 'string' ? data.packageVersion : null,
+    packageDigest: typeof data.packageDigest === 'string' ? data.packageDigest : null,
+    packageSource: data.packageSource === 'mirror' || data.packageSource === 'official' || data.packageSource === 'local'
+      ? data.packageSource : null,
     records: data.records && typeof data.records === 'object' && !Array.isArray(data.records) ? data.records : {},
     gameDirs: data.gameDirs && typeof data.gameDirs === 'object' && !Array.isArray(data.gameDirs) ? data.gameDirs : {},
     transactions: data.transactions && typeof data.transactions === 'object' && !Array.isArray(data.transactions) ? data.transactions : {}
@@ -2181,6 +2169,9 @@ ipcMain.handle('aurora-state', () => {
   }
   return {
     packageRoot: store.packageRoot,
+    packageVersion: store.packageVersion,
+    packageDigest: store.packageDigest,
+    packageSource: store.packageSource,
     package: validatePackage(store.packageRoot),
     records,
     gameDirs: store.gameDirs,
@@ -2213,8 +2204,56 @@ ipcMain.handle('aurora-choose-package', async () => {
   if (!checked.ok) return { ok: false, reason: checked.reason };
   const store = loadAurora();
   store.packageRoot = checked.root;
+  store.packageVersion = null;
+  store.packageDigest = null;
+  store.packageSource = 'local';
   saveAurora(store);
   return { ok: true, packageRoot: store.packageRoot };
+});
+
+ipcMain.handle('aurora-download-package', async (event, requestedSource) => {
+  const current = loadAurora();
+  const storeError = auroraStoreError(current);
+  if (storeError) return storeError;
+  if (auroraDownloadController) return { ok: false, code: 'download-busy', message: 'Aurora package download is already running.' };
+  const source = requestedSource === 'mirror' || requestedSource === 'official' ? requestedSource : undefined;
+  const controller = new AbortController();
+  auroraDownloadController = controller;
+  const sender = event && event.sender;
+  const onProgress = progress => {
+    try {
+      if (sender && !sender.isDestroyed?.()) sender.send('aurora-package-progress', progress);
+    } catch { /* The renderer may close while a download is finishing. */ }
+  };
+  try {
+    const result = await downloadAuroraPackage({
+      source,
+      language: loadState().lang || 'zh',
+      cacheRoot: path.join(app.getPath('userData'), 'aurora-packages'),
+      signal: controller.signal,
+      onProgress
+    });
+    if (!result.ok) return result;
+    const fresh = loadAurora();
+    const freshError = auroraStoreError(fresh);
+    if (freshError) return freshError;
+    fresh.packageRoot = result.packageRoot;
+    fresh.packageVersion = result.version;
+    fresh.packageDigest = result.digest;
+    fresh.packageSource = result.source;
+    saveAurora(fresh);
+    return { ...result, packageRoot: fresh.packageRoot };
+  } catch (error) {
+    return { ok: false, code: error.code || 'download-failed', message: error.message || String(error) };
+  } finally {
+    if (auroraDownloadController === controller) auroraDownloadController = null;
+  }
+});
+
+ipcMain.handle('aurora-cancel-package-download', () => {
+  if (!auroraDownloadController) return { ok: false, code: 'no-download' };
+  auroraDownloadController.abort();
+  return { ok: true, cancelled: true };
 });
 
 ipcMain.handle('aurora-install', async (_event, gameDir, proxy, overwriteConfirmed, exePath) => {
