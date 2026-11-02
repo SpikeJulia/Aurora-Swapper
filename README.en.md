@@ -66,8 +66,6 @@ Get-FileHash .\Aurora-Swapper-<version>-portable.exe -Algorithm SHA256
 
 A digest that matches the one in `SHA256SUMS.txt` means the bytes are exactly the published ones.
 
-If your organisation does not allow unsigned software to run, go through your IT approval process rather than working around it.
-
 ---
 
 ## What it does

@@ -24,7 +24,7 @@ v0.1.1 发布后，安装包在 Windows 上会弹「未知发布者」。这个�
 
 | 文件 | 改动 |
 | --- | --- |
-| `src/renderer/aurora-guide-data.js` | 常见问题新增 `windows-warning`：为什么提示、怎么继续、怎么校验、单位不允许时怎么办 |
+| `src/renderer/aurora-guide-data.js` | 常见问题新增 `windows-warning`：为什么提示、怎么继续、怎么校验下载文件 |
 | `README.md` | 下载章节新增「Windows 会提示「未知发布者」」小节；条数 51 → 52 |
 | `README.en.md` | 同上（English）；条数 51 → 52 |
 | `test/aurora/guide.test.js` | 新增用例：常见问题必须回答未签名提示，且中英文都能搜到 |

@@ -66,8 +66,6 @@ Get-FileHash .\Aurora-Swapper-<版本号>-portable.exe -Algorithm SHA256
 
 校验值和 `SHA256SUMS.txt` 里的一致，就说明文件和发布内容完全一致。
 
-如果你的单位规定不允许运行未签名的程序，请按单位 IT 的要求走申请流程，不要绕过。
-
 ---
 
 ## 它做什么
