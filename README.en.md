@@ -96,7 +96,7 @@ Eight sections, fifty-one entries, Chinese and English:
 | --- | --- |
 | What this is | For people who have never used a tool like this: what it does, what it cannot do, what to prepare, and a glossary |
 | GPU and hardware requirements | What each graphics card generation gets you, plus the four gates that trip people up more than the model does |
-| Quick start | From preparing the package to opening the in-game overlay, step by step, with what success looks like |
+| Quick start | From preparing the package to opening the in-game Aurora panel, step by step, with what success looks like |
 | Basic settings and saving | Finding the right game folder, separating game settings from overlay settings, saving and rolling back |
 | Parameter reference | Each common control explained: what it does, its values, when it applies, restart behaviour, and how to revert |
 | Tuning strategies | Stability, quality, or frame rate — and a repeatable test loop that changes one setting at a time |
@@ -154,8 +154,11 @@ npm start
 Build the Windows portable executable:
 
 ```bash
+npm run icon          # turns app_iocn.png into build/icon.ico; the .ico is not in the repository
 npm run build:portable
 ```
+
+`npm run build` runs `npm run payload` first. That collects the ReShade / DLSS5-Feeder add-on payload inherited from DLSS 5 Swapper. When it cannot find a local DLSS 5 folder it prints one line and exits with status 0, which **does not break the build** — the Aurora install path never uses that directory. The Aurora package is downloaded by the app at runtime, or pointed at by the user.
 
 Run the tests:
 
