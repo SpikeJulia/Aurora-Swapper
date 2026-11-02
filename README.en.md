@@ -49,6 +49,25 @@ Windows portable and installer builds are on the [Releases page](https://github.
 
 The portable build is a single `.exe` that runs where it sits; the installer creates desktop and Start-menu shortcuts. Neither bundles the Aurora package — download it in Settings on first run, or point the app at an already extracted folder.
 
+### Windows will say the publisher is unknown
+
+This app is **not signed with a Windows code-signing certificate**, so Windows shows a blue "Windows protected your PC" dialog or reports the publisher as unknown when you install it. That is a **signing notice, not malware**, and not a broken download — the only reason is that no paid certificate was bought.
+
+To continue:
+
+1. Choose "More info", then "Run anyway".
+2. After installing the installer build, right-click the **Aurora Swapper** shortcut in the Start menu or on the desktop, choose Properties, tick "Unblock", and apply it. Windows stops asking afterwards.
+
+To confirm the file you have is the published one, check it against [`SHA256SUMS.txt`](https://github.com/SpikeJulia/Aurora-Swapper/releases/latest/download/SHA256SUMS.txt) on the release page:
+
+```powershell
+Get-FileHash .\Aurora-Swapper-<version>-portable.exe -Algorithm SHA256
+```
+
+A digest that matches the one in `SHA256SUMS.txt` means the bytes are exactly the published ones.
+
+If your organisation does not allow unsigned software to run, go through your IT approval process rather than working around it.
+
 ---
 
 ## What it does
@@ -90,7 +109,7 @@ A read-only offline guide ships with the app. It never edits your configuration 
   <img src="docs/screenshots/guide-hardware.png" alt="GPU and hardware requirements" width="820">
 </p>
 
-Eight sections, fifty-one entries, Chinese and English:
+Eight sections, fifty-two entries, Chinese and English:
 
 | Section | What it covers |
 | --- | --- |

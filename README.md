@@ -49,6 +49,25 @@ Windows 便携版和安装版都在 [Releases 页面](https://github.com/SpikeJu
 
 便携版是单个 `.exe`，解压即用；安装版会创建桌面和开始菜单快捷方式。两者都不捆绑 Aurora 发布包——第一次使用需要在「设置」页下载，或者指定本机已解压好的发布目录。
 
+### Windows 会提示「未知发布者」
+
+这个程序**没有购买 Windows 代码签名证书**，所以安装时 Windows 会弹出蓝框「Windows 已保护你的电脑」，或者提示发布者「未知」。这是**签名问题，不是病毒**，也不是文件损坏——原因只是没有付费证书。
+
+要继续安装：
+
+1. 点「更多信息」，再点「仍要运行」。
+2. 安装版装完后，右键开始菜单或桌面上的 **Aurora Swapper** 快捷方式 →「属性」→ 勾选「解除锁定」→「应用」，之后不会再拦。
+
+想确认手上的文件没有被换过，用发布页上的 [`SHA256SUMS.txt`](https://github.com/SpikeJulia/Aurora-Swapper/releases/latest/download/SHA256SUMS.txt) 校验：
+
+```powershell
+Get-FileHash .\Aurora-Swapper-<版本号>-portable.exe -Algorithm SHA256
+```
+
+校验值和 `SHA256SUMS.txt` 里的一致，就说明文件和发布内容完全一致。
+
+如果你的单位规定不允许运行未签名的程序，请按单位 IT 的要求走申请流程，不要绕过。
+
 ---
 
 ## 它做什么
@@ -90,7 +109,7 @@ Windows 便携版和安装版都在 [Releases 页面](https://github.com/SpikeJu
   <img src="docs/screenshots/guide-hardware.png" alt="显卡与硬件要求" width="820">
 </p>
 
-八个章节、五十一条说明，中英双语：
+八个章节、五十二条说明，中英双语：
 
 | 章节 | 内容 |
 | --- | --- |

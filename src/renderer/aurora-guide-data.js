@@ -276,6 +276,17 @@
         article('dawnwalker', pair('黎明行者之血与其他游戏', 'The Blood of Dawnwalker and other games'), pair(['黎明行者之血有 DLSS 5 与 RTX 40 6X 同时运行的历史记录，不能扩展成全部硬件和版本保证。', '绝区零 11008、组件异常和文件消失尚未确认解决；原神与崩铁的各类桥接路线未全部验证。先核对具体版本和日志，不凭症状猜原因。'], ['The Blood of Dawnwalker has historical reports of DLSS 5 with RTX 40 6X; this is not a guarantee for every GPU or game version.', 'Zenless Zone Zero 11008, component errors, and disappearing files remain unresolved in documentation. Genshin/Star Rail bridge paths are not fully verified. Collect versions and logs rather than guessing causes.']), ['Dawnwalker', '黎明行者', '绝区零', '11008', '原神', '崩铁'])
       ] },
       { id: 'faq', title: pair('常见问题与恢复', 'Troubleshooting and recovery'), description: pair('先找具体原因，保留日志和备份。', 'Find the specific cause and preserve logs and backups.'), entries: [
+        article('windows-warning', pair('Windows 提示未知发布者', 'Windows says the publisher is unknown'), pair([
+          '这个程序没有购买 Windows 代码签名证书，所以安装时 Windows 会弹出蓝框「Windows 已保护你的电脑」，或者提示「未知发布者」（英文系统显示 Unknown publisher）。这是签名问题，不是病毒，也不是文件损坏——原因只是没有付费证书。',
+          '继续安装：点「更多信息」再点「仍要运行」。安装版装完后，右键开始菜单或桌面上的 Aurora Swapper 快捷方式，选「属性」，勾选「解除锁定」再点「应用」，之后 Windows 就不会再拦。',
+          '想确认手上的文件没有被换过：用发布页上的 SHA256SUMS.txt 校验下载到的 exe。校验值一致，就说明文件和发布内容完全一致。',
+          '如果你的单位规定不许运行未签名的程序，请按单位 IT 的要求走申请流程，不要绕过。'
+        ], [
+          'This app is not signed with a Windows code-signing certificate, so Windows shows a blue "Windows protected your PC" dialog or reports the publisher as unknown (Unknown publisher in English) when you install it. That is a signing notice, not malware, and not a broken download — the only reason is that no paid certificate was bought.',
+          'To continue: choose "More info" and then "Run anyway". After installing the installer build, right-click the Aurora Swapper shortcut in the Start menu or on the desktop, choose Properties, tick "Unblock", and apply it; Windows stops asking afterwards.',
+          'To confirm the file you have is the published one, check the downloaded exe against SHA256SUMS.txt on the release page. A matching digest means the bytes are exactly the published ones.',
+          'If your organisation does not allow unsigned software to run, go through your IT approval process rather than working around it.'
+        ]), ['未签名', '未知发布者', 'Windows 已保护你的电脑', '解除锁定', 'SHA-256', 'unsigned', 'publisher', 'Unblock']),
         article('no-overlay', pair('按 Insert 没反应', 'Insert does not open the overlay'), pair(['确认安装在实际游戏 EXE 目录，Proxy 已加载，游戏有有效超分输入；检查快捷键是否冲突。无 Insert 键可尝试 Windows 屏幕键盘。', 'Vulkan 的面板能力和字体处理有版本限制。安装成功不代表游戏内所有功能已初始化；先查看 OptiScaler.log。'], ['Verify the real EXE folder, proxy loading, usable game input, and shortcut conflicts. Try the Windows on-screen keyboard if Insert is absent.', 'Vulkan overlay and font handling have release-specific limitations. Installation success does not prove all in-game features initialized; inspect OptiScaler.log.']), ['Insert', '面板打不开', 'overlay']),
         article('proxy-conflict', pair('目录里已经有别的 Mod Loader', 'Another mod loader is already in the folder'), pair([
           '- 同一个目录里只能有一个代理 DLL 生效。同时放两个，游戏只会加载其中一个，另一个是死文件，很容易被误判成「装好了」。',

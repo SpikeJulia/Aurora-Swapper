@@ -146,6 +146,23 @@ test('the operating steps name this app buttons and say what success looks like'
   assert.match(buttonText, /下载发布包/, 'the package download is explained');
 });
 
+test('the guide explains the unsigned installer warning and how to get past it', () => {
+  const faq = guide.data.sections.find(section => section.id === 'faq');
+  const entry = faq.entries.find(item => item.id === 'windows-warning');
+  assert.ok(entry, 'the FAQ answers the unsigned installer warning');
+  const zh = entry.body.zh.join('\n');
+  assert.match(zh, /未知发布者/, 'names the warning');
+  assert.match(zh, /不是病毒/, 'says it is not malware');
+  assert.match(zh, /更多信息/, 'says how to continue');
+  assert.match(zh, /解除锁定/, 'says how to stop the prompt afterwards');
+  assert.match(zh, /SHA256SUMS/, 'points at the checksum');
+
+  const chinese = guide.searchGuide('未签名', 'zh');
+  assert.ok(chinese.flatMap(section => section.entries).some(item => item.id === 'windows-warning'), 'searchable in Chinese');
+  const english = guide.searchGuide('unsigned', 'en');
+  assert.ok(english.flatMap(section => section.entries).some(item => item.id === 'windows-warning'), 'searchable in English');
+});
+
 test('the guide tells the user how to find the real game folder and how to test one change at a time', () => {
   const basics = guide.data.sections.find(section => section.id === 'basics');
   const folder = basics.entries.find(entry => entry.id === 'game-folder');
