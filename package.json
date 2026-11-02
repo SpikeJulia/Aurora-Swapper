@@ -1,6 +1,6 @@
 {
   "name": "aurora-swapper",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "productName": "Aurora Swapper",
   "description": "Install, repair, and restore OptiScaler Aurora for games in a local library.",
   "main": "main.js",

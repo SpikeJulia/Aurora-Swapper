@@ -44,8 +44,8 @@ test('the About page keeps the original project links and support layout', () =>
   const aboutEnd = html.indexOf('</section>', aboutStart);
   const about = html.slice(aboutStart, aboutEnd);
   assert.match(about, /href="https:\/\/github\.com\/spikejulia" data-project="github"/);
-  assert.match(about, /<button[^>]*id="aboutUnreleased"[^>]*disabled/);
-  assert.doesNotMatch(about, /data-project="releases"/);
+  assert.match(about, /href="https:\/\/github\.com\/SpikeJulia\/Aurora-Swapper\/releases\/latest" data-project="releases"/);
+  assert.doesNotMatch(about, /aboutUnreleased|尚未发布/);
   assert.match(about, /href="https:\/\/github\.com\/rakanki911\/DLSS5-Swapper" data-project="original-swapper"/);
   assert.match(about, /href="https:\/\/github\.com\/abc354402600\/OptiScaler-Aurora" data-project="aurora-source"/);
   assert.match(about, /data-i18n="aboutSourceIntro"/);
@@ -81,7 +81,7 @@ test('About attribution and release-state copy is accurate in English and Chines
     assert.match(window.i18n.t('aboutBody'), /OptiScaler Aurora/);
     assert.match(window.i18n.t('aboutBy'), /spikejulia/);
     assert.match(window.i18n.t('aboutGithub'), /spikejulia/);
-    assert.match(window.i18n.t('aboutUnreleased'), /未发布|not released/i);
+    assert.match(window.i18n.t('aboutDownloads'), /下载与更新|download/i);
     assert.match(window.i18n.t('aboutOriginalSwapper'), /DLSS 5 Swapper.*2\.2\.7.*Rakan Alkhaldi.*MIT/);
     assert.match(window.i18n.t('aboutAuroraSource'), /OptiScaler Aurora.*GPL-3\.0/);
     assert.match(window.i18n.t('aboutPackageNotice'), /不随.*分发|not bundled/i);

@@ -79,8 +79,9 @@ test('real IPC persists per-EXE choices, validates selection, uses effective rou
   assert.equal(installs.at(-1).api, 'opengl');
   assert.equal(fs.existsSync(game), false, 'mock install never creates game files');
   assert.equal(await handlers.get('open-project')(event, 'github'), true);
-  assert.equal(await handlers.get('open-project')(event, 'releases'), false, 'the old release page is no longer advertised');
-  assert.equal(opened.length, 1);
+  assert.equal(await handlers.get('open-project')(event, 'releases'), true, "this project's own release page is advertised");
+  assert.equal(opened.length, 2);
+  assert.equal(opened[1], 'https://github.com/SpikeJulia/Aurora-Swapper/releases/latest');
   assert.equal(await handlers.get('open-project')(event, 'https://example.com'), false);
   failOpen = true;
   assert.equal(await handlers.get('open-project')(event, 'github'), false);

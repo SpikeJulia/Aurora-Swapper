@@ -50,6 +50,14 @@ test('a newer release is reported, an older or equal one is not', async (t) => {
   }
 });
 
+test("the update lookup asks this project's own release page, never an upstream one", async (t) => {
+  let requested = '';
+  const { handlers } = load(t, { fetchImpl: async (url) => { requested = String(url); return release('v0.1.1'); } });
+  await handlers.get('update-check')();
+  assert.match(requested, /api\.github\.com\/repos\/SpikeJulia\/Aurora-Swapper\/releases\/latest/);
+  assert.doesNotMatch(requested, /rakanki911/);
+});
+
 test('the lookup happens once per launch', async (t) => {
   const { handlers, calls } = load(t, { fetchImpl: async () => release('v9.0.0') });
   const first = await handlers.get('update-check')();

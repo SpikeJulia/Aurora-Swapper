@@ -3,7 +3,7 @@
 // Only these destinations may be opened by the renderer, never arbitrary URLs.
 const links = Object.freeze({
   github: 'https://github.com/spikejulia',
-  releases: null,
+  releases: 'https://github.com/SpikeJulia/Aurora-Swapper/releases/latest',
   'original-swapper': 'https://github.com/rakanki911/DLSS5-Swapper',
   'aurora-source': 'https://github.com/abc354402600/OptiScaler-Aurora',
   'aurora-guide': 'https://github.com/abc354402600/OptiScaler-Aurora/blob/1d22875d05fac2d7ffb86ed912b943ce1a6e915a/docs/GUIDE.zh-CN.md',

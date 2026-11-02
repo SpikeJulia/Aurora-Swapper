@@ -26,7 +26,7 @@
 
 以 [DLSS 5 Swapper](https://github.com/rakanki911/DLSS5-Swapper) 2.2.7 的源码为底，保留原项目 MIT 许可并在“关于”页注明 Rakan Alkhaldi 的来源。当前 Aurora Swapper 的开发者署名为 [spikejulia](https://github.com/spikejulia)。
 
-Aurora 上游为 [OptiScaler-Aurora](https://github.com/abc354402600/OptiScaler-Aurora)，许可为 GPL-3.0。它的发布包不放进本仓库，也不打进安装包；用户可以在设置里指定本机目录，或下载到程序自己的 `userData/aurora-packages` 缓存。关于页分别列明 Swapper 派生界面（MIT）和 Aurora 本体（GPL-3.0），并说明 Aurora 包由用户本地指定或在线下载，不随本应用分发。应用自己的 Release 尚未发布前，不把上游 Swapper 或 Aurora 的 Release 当成本应用最新版链接。
+Aurora 上游为 [OptiScaler-Aurora](https://github.com/abc354402600/OptiScaler-Aurora)，许可为 GPL-3.0。它的发布包不放进本仓库，也不打进安装包；用户可以在设置里指定本机目录，或下载到程序自己的 `userData/aurora-packages` 缓存。关于页分别列明 Swapper 派生界面（MIT）和 Aurora 本体（GPL-3.0），并说明 Aurora 包由用户本地指定或在线下载，不随本应用分发。应用自己的 Release 发布后（v0.1.0 于 2026-11-02 发布），“关于”页的第二个按钮指向本项目发布页 `https://github.com/SpikeJulia/Aurora-Swapper/releases/latest`；应用自身的更新检查也只查本项目仓库，不查上游 Swapper 或 Aurora 的 Release。
 
 ## 运行和开发
 
@@ -109,6 +109,8 @@ Aurora 上游为 [OptiScaler-Aurora](https://github.com/abc354402600/OptiScaler-
 ### 关于
 
 说明这是 Aurora 的安装界面，保留 Swapper 原作者署名，并写上 MIT 与 GPL 的区分。
+
+两个并排按钮：开发者 GitHub（指向 spikejulia 个人页）与"下载与更新"（指向本项目发布页）。发布页文案固定，不写版本号，避免发新版后过期说谎。发布页未确定前第二个按钮是禁用的"尚未发布"，该占位已于 v0.1.0 撤除。两个按钮用品牌紫 `#a100e3`，不用上游 Swapper 的绿色。
 
 ## 发布包是否有效
 
@@ -208,3 +210,5 @@ Windows 上的人工检查不纳入自动测试：用一个含假 exe 的目录�
 ## 名称
 
 程序显示名：Aurora Swapper。包名和 `appId` 不沿用 Swapper 的 `com.rakan.dlss5swapper`。
+
+Windows 图标（任务栏、托盘、安装包）取 `assets/logo.png` 的紫色 A 标，与侧栏品牌和 README banner 同一张。`scripts/make-icon.js` 的默认源即该文件，上游 `app_iocn.png` 已从仓库删除，重新构建不会退回上游图标。
