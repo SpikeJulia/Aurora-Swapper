@@ -1,196 +1,183 @@
 <p align="center">
-  <img src="docs/banner.png" alt="DLSS 5 Swapper" width="100%">
+  <img src="assets/logo.png" alt="Aurora Swapper" width="88">
 </p>
 
-<h1 align="center">DLSS 5 Swapper</h1>
+<h1 align="center">Aurora Swapper</h1>
+
+<p align="center">为你的游戏安装、修复和还原 <a href="https://github.com/abc354402600/OptiScaler-Aurora">OptiScaler Aurora</a>。</p>
 
 <p align="center">
-  Install and manage DLSS 5 Neural Rendering for compatible games and emulators.
+  <a href="#下载">下载</a> ·
+  <a href="#它做什么">它做什么</a> ·
+  <a href="#显卡支持">显卡支持</a> ·
+  <a href="#使用指南">使用指南</a> ·
+  <a href="#从源码构建">从源码构建</a> ·
+  <a href="#许可证与致谢">许可证与致谢</a>
 </p>
 
-<p align="center">
-  <a href="https://github.com/rakanki911/DLSS5-Swapper/releases/latest"><img src="https://img.shields.io/github/v/release/rakanki911/DLSS5-Swapper?color=8fd400&label=release" alt="Latest release"></a>
-  <a href="https://github.com/rakanki911/DLSS5-Swapper/releases"><img src="https://img.shields.io/github/downloads/rakanki911/DLSS5-Swapper/total?color=8fd400&label=downloads&cacheSeconds=300" alt="Total downloads"></a>
-  <img src="https://img.shields.io/badge/Windows-10%20%2F%2011-8fd400" alt="Windows 10/11">
-  <img src="https://img.shields.io/badge/languages-38-8fd400" alt="38 languages">
-  <a href="https://buymeacoffee.com/rakanki911"><img src="https://img.shields.io/badge/support-555" alt="Support"></a>
-  <a href="https://buymeacoffee.com/rakanki911"><img height="20" src="https://cdn.buymeacoffee.com/buttons/v2/lato-yellow.png" alt="Buy me a coffee"></a>
-</p>
-
-## Download
-
-[**Windows Installer**](https://github.com/rakanki911/DLSS5-Swapper/releases/latest) ·
-[**Portable**](https://github.com/rakanki911/DLSS5-Swapper/releases/latest) ·
-[Checksums](https://github.com/rakanki911/DLSS5-Swapper/releases/latest)
-
-Both are on the latest release page, with `SHA256SUMS.txt` beside them.
-
-<p align="center">
-  <img src="https://raw.githubusercontent.com/rakanki911/DLSS5-Swapper/7415065e5c5437441d0e0b0a0362d0ada6d86e15/docs/screenshots/01-home.png" alt="Home" width="100%">
-</p>
-
-## Features
-
-- **Easy installation:** native DLSS games, or compatible non-DLSS games through DLSS5-Feeder.
-- **Your library:** Steam, Epic, GOG, modern Xbox Game Pass folders, and manually added games/emulators.
-- **Search and filters:** combine title, graphics API, DLSS status/version and add-ons; click counters to filter.
-- **Flexible layout:** group by store or show everything in one list, with game artwork and light/dark themes.
-- **Controlled scanning:** full-drive scanning is **off by default**. Added folders still scan normally; enable all-drive discovery or remove scan folders in Settings.
-- **Right-click shortcuts:** open/copy folder, rescan, change cover, restore originals or hide a game.
-- **Backups and History:** restore original files, keep installation records, and copy History/activity/install logs.
-- **Save diagnostics:** one file with the install log, the game’s own ReShade and Feeder logs, the manifest and your driver - shown to you before it is written, and ready to attach to a report.
-- **In-game overlay:** press **F8** to open the app's own panel over the running game and move the real DLSS Neural Rendering sliders while you play. Supports the **DLSS5-Feeder** and **RenoDX v4.7** routes only. Drag the grip in its bottom right corner to resize it; each game remembers its own size.
-- **Rendering API override:** optional, per game, with **Automatic** as the default; detection is never overwritten.
-- **Custom add-ons:** the Add-ons page remains available alongside the integrated installation routes.
-- **Multipass neural rendering:** an installation route that runs the neural pass up to ten times per frame, on DX12, DX11 and 64-bit DX9 - including games with no DLSS of their own.
-- **Community (BETA):** read what worked for other people, narrowed to the games on your PC and the graphics card in it, leave your own report, and talk it over underneath it. Opt-in, and everything you leave can be edited, deleted or withdrawn.
-- **Community chat:** one live room for everyone using the app - screenshots, game cards, replies with mentions and reactions.
-
-## New in 2.2.7
-
-Find the reviews that matter to you, hear about it when people answer you - and every fix promised on the tracker.
-
-### ✨ New
-
-- **Filter by your graphics card.** Pick your card in the Community filter - **My card** is always first - and see only the reviews from people with that same card.
-- **Reviews for your games.** Switch to **My games** and the Community page shows the reviews for the games installed on your PC. Open any game in your library and what the community found is right above Install.
-- **My comments** - everything you reported, in one place.
-- **Sort** by most recent, most reports or A-Z, and every card shows which APIs its reviews used ([#288]).
-- **Notifications** when someone mentions you in the chat, replies to you there, or reacts to your review or your message.
-
-### 🔧 Fixed
-
-| | |
-|---|---|
-| **DirectDraw never installed** | dgVoodoo was downloaded only for DX8 and DX9, so every DirectDraw game failed with `errDgVoodooMissing` - Gens and the other emulators included ([#292], [#279], [#150]) |
-| **Prey, Titanfall 2, Call of Duty 2 and Max Payne read as "No 3D executable"** | Their renderer is a DLL beside the executable. A Direct3D library in the executable's own folder is now enough to offer it ([#259], [#249]) |
-| **Portal was filed under Half-Life 2** | Both run `hl2.exe`, and no report ever carried the store id it should have. An executable many games share - `hl2.exe`, every emulator - no longer decides which card a report lands on ([#274]) |
-| **The read-only ReShade.ini banner came back** | 2.2.5 cleared it only when a game was opened in the app. Every game this app installed into is checked once each time it starts ([#155]) |
-| **Games under Program Files failed with `EPERM`** | Windows protects that folder. The install now says so up front, in words: run as administrator, or move the game ([#301]) |
-| **The driver warning read like a wall** | It is a warning: many people run newer drivers without trouble, especially with MSI Afterburner and RivaTuner closed. It says so now ([#300], [#278]) |
-| **"DLSS was installed normally" before it was** | The overlay message appeared before the install finished, even when it then failed ([#275]) |
-| **Uninstalling left ReShade in games** | Uninstalling never touches game folders. The uninstaller now says so and points to **Restore originals** first ([#266]) |
-
-[Full 2.2.7 notes →](https://github.com/rakanki911/DLSS5-Swapper/releases/tag/v2.2.7)
-
-[#150]: https://github.com/rakanki911/DLSS5-Swapper/issues/150
-[#155]: https://github.com/rakanki911/DLSS5-Swapper/issues/155
-[#249]: https://github.com/rakanki911/DLSS5-Swapper/issues/249
-[#259]: https://github.com/rakanki911/DLSS5-Swapper/issues/259
-[#266]: https://github.com/rakanki911/DLSS5-Swapper/issues/266
-[#274]: https://github.com/rakanki911/DLSS5-Swapper/issues/274
-[#275]: https://github.com/rakanki911/DLSS5-Swapper/issues/275
-[#278]: https://github.com/rakanki911/DLSS5-Swapper/issues/278
-[#279]: https://github.com/rakanki911/DLSS5-Swapper/issues/279
-[#288]: https://github.com/rakanki911/DLSS5-Swapper/issues/288
-[#292]: https://github.com/rakanki911/DLSS5-Swapper/issues/292
-[#300]: https://github.com/rakanki911/DLSS5-Swapper/issues/300
-[#301]: https://github.com/rakanki911/DLSS5-Swapper/issues/301
-
-## Earlier releases
-
-Each one is written up in full - what broke, why, and what was changed.
-
-| | |
-|---|---|
-| **2.2.6** | [Community chat](docs/releases/v2.2.6.md) - one live room for everyone, and the right add-on on every route |
-| **2.2.5** | [Multipass](docs/releases/v2.2.5.md) - the neural pass up to ten times per frame, plus nine faults fixed at the cause |
-| **2.2.4** | [The Community page](docs/releases/v2.2.4.md) - compare notes with everyone else, plus eight faults fixed at the cause |
-| **2.2.3** | [Six reported faults, fixed at the cause](docs/releases/v2.2.3.md) - OptiScaler on older cards, a game's own stale shader compiler, the overlay on a scaled display |
-| **2.2.2** | [The reports people sent](docs/releases/v2.2.2.md) - games it could not find, installs it refused, the overlay's own page |
-| **2.2.1** | [The Overlay page](docs/releases/v2.2.1.md) - themes you can write yourself, and a preview that runs before you choose |
-| **2.2.0** | [Optional OptiScaler and a smarter library](docs/releases/v2.2.0.md) |
-
-Every release also carries its own notes and downloads on the
-[releases page](https://github.com/rakanki911/DLSS5-Swapper/releases).
-
-## Compatibility
-
-| Category | Support |
-| --- | --- |
-| **System** | Windows 10/11 x64; compatible 32-bit and 64-bit games |
-| **ReShade / Feeder GPUs** | RTX 20 / 30 / 40 / 50; older-series support is reported by the bundled modified runtime's author |
-| **OptiScaler GPUs** | 64-bit games with native DLSS enabled. The bundled neural model runs on **Blackwell** (RTX 50 / RTX PRO Blackwell); an older card needs a modded `nvngx_dlssnr.dll` you supply, which is never overwritten. Driver **616.56** recommended |
-| **DirectX 12** | Native DLSS, Feeder, or eligible OptiScaler games |
-| **DirectX 11** | Feeder for 32/64-bit games; eligible OptiScaler games |
-| **DirectX 9 / 8** | DX9: 32/64-bit; DX8: 32-bit, through dgVoodoo2 → DX11 → Feeder |
-| **Vulkan / OpenGL** | ReShade/Feeder; eligible Vulkan games can also use OptiScaler |
-| **DirectX 10** | Not directly supported by Feeder; choose DX11 when available |
-| **In-game overlay** | 64-bit DirectX 11 / 12 games with ReShade add-on support; **DLSS5-Feeder and RenoDX v4.7 only** |
-
-OptiScaler's DX11/Vulkan path uses a DX12 bridge with FSR output by default.
-For Vulkan backend changes, **restore originals first**. OptiScaler is not the emulator/non-DLSS route.
-
-## Emulators
-
-Select the emulator folder and its active renderer, then use **ReShade/Feeder**.
-
-<table>
-  <tr><th colspan="3">Emulators</th></tr>
-  <tr><td>DuckStation</td><td>PCSX2</td><td>RPCS3</td></tr>
-  <tr><td>Dolphin</td><td>PPSSPP</td><td>Xenia</td></tr>
-  <tr><td>Cemu</td><td>Ryujinx</td><td>yuzu / suyu / Eden / Citron / Sudachi</td></tr>
-  <tr><td>shadPS4</td><td>Azahar / Citra / Lime3DS</td><td>melonDS</td></tr>
-  <tr><td>Flycast</td><td>xemu</td><td>Vita3K</td></tr>
-  <tr><td>RetroArch</td><td>mGBA</td><td>Snes9x</td></tr>
-  <tr><td>Play!</td><td></td><td></td></tr>
-</table>
-
-Compatibility varies by renderer and game. Xenia HUD correction remains experimental.
-
-## 38 languages
-
-<table>
-  <tr><th colspan="4">All 38 languages</th></tr>
-  <tr><td>English</td><td>العربية</td><td>简体中文</td><td>繁體中文</td></tr>
-  <tr><td>Español</td><td>Português</td><td>Русский</td><td>Deutsch</td></tr>
-  <tr><td>Français</td><td>日本語</td><td>한국어</td><td>Italiano</td></tr>
-  <tr><td>Türkçe</td><td>Polski</td><td>Українська</td><td>Nederlands</td></tr>
-  <tr><td>Čeština</td><td>Magyar</td><td>Română</td><td>Ελληνικά</td></tr>
-  <tr><td>Svenska</td><td>Dansk</td><td>Norsk</td><td>Suomi</td></tr>
-  <tr><td>ไทย</td><td>Tiếng Việt</td><td>Bahasa Indonesia</td><td>Bahasa Melayu</td></tr>
-  <tr><td>Filipino</td><td>हिन्दी</td><td>বাংলা</td><td>فارسی</td></tr>
-  <tr><td>اردو</td><td>Български</td><td>Српски</td><td>Hrvatski</td></tr>
-  <tr><td>Slovenčina</td><td>Català</td><td></td><td></td></tr>
-</table>
-
-**Arabic, Persian and Urdu support right-to-left layout.**
-
-## Screenshots
-
-<p><img src="https://raw.githubusercontent.com/rakanki911/DLSS5-Swapper/7415065e5c5437441d0e0b0a0362d0ada6d86e15/docs/screenshots/02-games.png" alt="Games" width="100%"></p>
-<p><img src="https://raw.githubusercontent.com/rakanki911/DLSS5-Swapper/7415065e5c5437441d0e0b0a0362d0ada6d86e15/docs/screenshots/03-library.png" alt="Library" width="100%"></p>
-<p><img src="https://raw.githubusercontent.com/rakanki911/DLSS5-Swapper/7415065e5c5437441d0e0b0a0362d0ada6d86e15/docs/screenshots/04-game.png" alt="Game details" width="100%"></p>
-<p><img src="docs/screenshots/07-overlay.png" alt="The Overlay page with the Emerald, Azure and Amethyst themes" width="100%"></p>
-
-## Before installing
-
-- **Anti-cheat:** red warning and optional confirmation, not a blanket block. Injection can cause crashes or account bans; the app never bypasses anti-cheat.
-- **Requirements:** Feeder needs Visual C++ runtimes (x64, plus x86 for 32-bit games). Some components download on first use.
-- **Compatibility is not guaranteed.** Keep backups; existing mods may conflict. Not every reported game crash is fixed.
-- **Linux/Proton:** experimental community source only; no Linux binaries in this release.
-
-## Community and privacy
-
-- Opening the Community page downloads public game reports. A live connection
-  count is held only in memory; no connection identifiers are stored.
-- A report is sent only after you review and submit the fields shown in its
-  dialog: game, route, rendering API, result, optional comment, GPU, driver,
-  CPU, OS and app version.
-- The app uses a random install ID to prevent duplicate votes. The server stores
-  only its hash. **Remove my community activity** hides all your reports and
-  replies and resets your public community profile.
-- The owner-only administrator access code is verified by the community server
-  and stored locally with Windows encrypted storage. It is never written to the
-  public profile or the normal community settings file.
-
-## Support
-
-DLSS 5 Swapper is free and MIT licensed. If it saved you an evening of
-fiddling, you can buy me a coffee.
-
-<p><a href="https://buymeacoffee.com/rakanki911"><img height="44" src="https://cdn.buymeacoffee.com/buttons/v2/lato-yellow.png" alt="Buy me a coffee"></a></p>
+<p align="center"><b>简体中文</b> · <a href="README.en.md">English</a></p>
 
 ---
 
-Built by **Rakan Alkhaldi** · MIT · [Third-party credits and licences](THIRD_PARTY_NOTICES.md)
+## 它是什么
+
+Aurora Swapper 是一个 Windows 桌面小工具，只做一件事：把 OptiScaler Aurora 正确地装进你的游戏，装坏了能修回来，随时能还原成原样。
+
+画质功能全部来自 Aurora 本身。这个程序**自己不提供任何画质功能**，只负责安装、修复、还原三件事：
+
+| 动作 | 具体做什么 |
+| --- | --- |
+| **安装** | 把 Aurora 的运行库和一个「代理 DLL」放进你指定的游戏目录，并调用 `runtime_sync.ps1` 同步运行库。 |
+| **修复** | 游戏更新、启动器校验文件、或者你自己动过目录之后，把文件补回正确状态。 |
+| **还原** | 撤掉 Aurora 装进去的文件，把游戏原本的 DLL 备份原样放回。 |
+
+除这三件事之外，程序不碰你的游戏：不改游戏本体文件、不上传任何数据、不装其他 Mod、不改游戏数值。被替换掉的游戏原文件会被自动备份，还原时按字节放回。
+
+**它不是什么**
+
+- 不是修改器：不改血量、伤害、速度这类数值，也不含任何作弊功能。
+- 不绕过反作弊：联网游戏可能拒绝加载第三方运行库，甚至带来账号风险。先查游戏规则和兼容性白名单。
+- 不是「画质增强包」：装上之后到底什么效果，取决于你的显卡、驱动、游戏和设置，需要自己进游戏对比。
+- 不保证所有游戏都支持：老的 DirectX 9 游戏，以及已经装了别的 Mod Loader 的游戏，通常装不上或会互相冲突。
+- 帧率变高不等于延迟变低：帧生成补出来的帧会增加操作延迟和鬼影。
+
+---
+
+## 下载
+
+Windows 便携版和安装版都在 [Releases 页面](https://github.com/SpikeJulia/Aurora-Swapper/releases/latest)。
+
+便携版是单个 `.exe`，解压即用；安装版会创建桌面和开始菜单快捷方式。两者都不捆绑 Aurora 发布包——第一次使用需要在「设置」页下载，或者指定本机已解压好的发布目录。
+
+---
+
+## 它做什么
+
+### 游戏库
+
+<p align="center">
+  <img src="docs/screenshots/library.png" alt="游戏库" width="820">
+</p>
+
+- 读取 Steam 的 `libraryfolders.vdf`，也可以手动添加任意游戏目录或整个游戏库文件夹。
+- 按名称搜索，按 Aurora 状态（未安装／已安装／安装未完成／状态待确认）和其它条件筛选。
+- 排序按最近游玩、按库分组、名称 A–Z、名称 Z–A。
+- 详情页里选代理 DLL（`dxgi.dll`、`winmm.dll`、`version.dll` 等）、安装、修复运行库、还原原始文件、打开游戏目录。
+- 已知游戏会带预选代理和说明，例如巫师 3 用 `dxgi.dll`、异环用 `winmm.dll`。
+
+### 发布包两种来源
+
+- **本地指定**：指向本机已经解压好的 Aurora 目录，完全离线。
+- **在线下载**：从上游 Release 下载完整发布包，校验 SHA-256 后解压。下载失败时保留你现有的有效发布包，绝不覆盖。中文界面默认走国内镜像，其它语言默认走官方源，可在下载窗口里手动切换。
+
+### 修复与还原
+
+- 游戏更新或启动器校验之后，用「修复运行库」把文件补回正确状态。
+- 运行库被保留有时是防降级或旧版保护，不一定是失败——以本程序「历史」页里的具体输出为准。
+- 还原失败时程序不会删文件；备份和清单会保留下来供下一次尝试。
+
+### 上游更新检查
+
+启动时检查一次上游最新发布包，24 小时缓存一次，也可以随时强制重查。用 SHA-256 区分「同一个 tag 重新发布」的情况。本地包没有版本信息时状态显示为「未知」，而不是谎报「已是最新」。
+
+---
+
+## 使用指南
+
+应用内置一份离线指南，只读，不修改你的任何配置，也不执行脚本。
+
+<p align="center">
+  <img src="docs/screenshots/guide-hardware.png" alt="显卡与硬件要求" width="820">
+</p>
+
+八个章节、五十一条说明，中英双语：
+
+| 章节 | 内容 |
+| --- | --- |
+| 这是什么 | 面向没用过这类工具的人：它能做什么、不能做什么、要准备什么、名词速查 |
+| 显卡与硬件要求 | 按显卡系列说明能拿到哪些功能，以及比显卡型号更容易卡住人的四条门槛 |
+| 快速上手 | 从准备发布包到第一次打开游戏内面板，每步写明点哪里、成功长什么样 |
+| 基础设置与保存 | 怎么找对游戏目录、面板设置与桌面操作的分工、保存与回退 |
+| 参数说明 | 常用参数逐项解释：作用、取值、适用条件、生效与重启、恢复方法 |
+| 调参思路 | 稳定／画质／帧率三种取向，以及一次只改一项的实测流程 |
+| 游戏专项说明 | 有历史验证记录的游戏，含各游戏的代理建议与已知边界 |
+| 常见问题与恢复 | 面板打不开、只能 2X、闪退花屏、更新后失效、还原失败等 |
+
+<p align="center">
+  <img src="docs/screenshots/guide-steps.png" alt="快速上手" width="820">
+</p>
+
+指南内容钉死在 Aurora `aurora-v1.1.2`（提交 `1d22875d05fac2d7ffb86ed912b943ce1a6e915a`），核对日期写在指南页顶部。下载新的 Aurora 包不会静默改写这份离线指南。
+
+---
+
+## 显卡支持
+
+硬件能跑什么，和 Aurora 能装上、能不能出画面，是两件事。下面是前者；后者还取决于游戏本身有没有超分选项。
+
+| 显卡 | 能拿到什么 |
+| --- | --- |
+| **NVIDIA RTX 50 系** | 超分、光线重建、帧生成、多帧生成，功能最全 |
+| **NVIDIA RTX 40 系** | 超分、光线重建、帧生成、多帧生成。Aurora 主打的 RTX 40 多帧生成（最高 6X）就是给这一代做的社区兼容处理 |
+| **NVIDIA RTX 30 系** | 超分、光线重建、DLSS 帧生成，没有多帧生成 |
+| **NVIDIA RTX 20 系** | 超分、光线重建，没有帧生成 |
+| **NVIDIA GTX 16 / 10 系** | 只有 DLSS 2 超分 |
+| **AMD RX 9000 系** | AMD FSR 升频（ML）与 FSR "Redstone" 全套 |
+| **AMD RX 7000 系** | FSR 3 帧生成可用 |
+| **AMD RX 6000 系** | FSR 3 帧生成可用（AMD 官方把帧生成下限放在 RX 5000） |
+| **AMD RX 5000 系** | FSR 3 帧生成可用；RX 590 及更早只剩 FSR 2 超分 |
+| **Intel Arc** | XeSS 可用 |
+
+笔电显卡按同代台式卡算。AMD 没有 DLSS 路线，走的是 FSR 和 XeSS，帧生成路线通常是 OptiFG 配 FSR3-FG 或 XeFG，6X 那套参数不适用。
+
+比显卡型号更容易让人白折腾一遍的，是这四条：游戏本身要有超分输入；渲染 API 要在支持范围内（OptiFG 帧生成只支持 DX12）；驱动版本要对；同一个游戏只能有一个代理。
+
+---
+
+## 系统要求
+
+- Windows 10/11 x64（安装、修复、还原都在 Windows 上完成）
+- 需要一块能跑所选超分后端的显卡和装好的驱动
+- 界面支持 13 种语言：English、简体中文、العربية、Español、Português、Русский、Deutsch、Français、日本語、한국어、Italiano、Türkçe、Polski
+
+---
+
+## 从源码构建
+
+```bash
+git clone https://github.com/SpikeJulia/Aurora-Swapper.git
+cd Aurora-Swapper
+npm install
+npm start
+```
+
+打包 Windows 便携版：
+
+```bash
+npm run build:portable
+```
+
+跑测试：
+
+```bash
+npm test          # Aurora 专项测试
+npm run test:legacy   # 继承自 Swapper 的旧测试套件
+```
+
+开发主要在 macOS 上进行；只有 `process.platform === 'win32'` 时才会调用 PowerShell，Mac 上的测试使用临时目录，不会执行 PowerShell。
+
+---
+
+## 许可证与致谢
+
+- 本仓库的代码以 **MIT** 许可发布。界面派生自 [DLSS 5 Swapper](https://github.com/rakanki911/DLSS5-Swapper) 2.2.7（Rakan Alkhaldi，MIT），原始版权声明保留在 [LICENSE](LICENSE)。
+- [OptiScaler Aurora](https://github.com/abc354402600/OptiScaler-Aurora) 本身是 **GPL-3.0**。它的发布包**不**随本应用分发，需要你自行指定或在线下载。
+- 第三方组件与各自许可见 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)。
+- 中文本地化由显卡长安补全。
+- 开发者：[spikejulia](https://github.com/spikejulia)
+
+---
+
+## 免责声明
+
+本项目与 NVIDIA、AMD、Intel 无关，也不代表这些厂商的官方支持。Aurora 是社区项目，不是 NVIDIA 官方发行版。请自行确认游戏的许可与规则后再使用。

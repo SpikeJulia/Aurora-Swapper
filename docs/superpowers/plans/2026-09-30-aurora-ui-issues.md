@@ -12,7 +12,7 @@
 
 ## Global Constraints
 
-- 仅在 `/Users/tangxuan/Deverloper/workspace/doc/.worktrees/aurora-swapper` 的 `aurora-swapper` 分支实施；保留现有未提交改动。
+- 仅在 `<repo>/.worktrees/aurora-swapper` 的 `aurora-swapper` 分支实施；保留现有未提交改动。
 - 不修改 `src/aurora/` 的安装核心，不调用 `setup_windows.bat`，不把 Aurora 发布包打入应用。
 - 关于页署名 `spikejulia`；原界面来源为 Rakan Alkhaldi 的 DLSS 5 Swapper 2.2.7（MIT），Aurora 本体单列 GPL-3.0 与上游来源。
 - 当前工作树没有 Git remote，也没有已确认的 Aurora Swapper 仓库／Release URL。外链配置前必须取得项目地址；未确认时“开发者 GitHub”可指向 `https://github.com/SpikeJulia`，应用“最新版本”入口不指向旧 Swapper 或 Aurora 本体的 Release。

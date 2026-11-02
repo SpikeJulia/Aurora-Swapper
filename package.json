@@ -21,8 +21,16 @@
     "overlay:build": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/build-overlay.ps1",
     "overlay:prepare": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/prepare-overlay.ps1"
   },
-  "author": "Aurora Swapper; interface based on DLSS 5 Swapper by Rakan Alkhaldi",
+  "author": "spikejulia; interface based on DLSS 5 Swapper by Rakan Alkhaldi",
   "license": "MIT",
+  "homepage": "https://github.com/SpikeJulia/Aurora-Swapper",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/SpikeJulia/Aurora-Swapper.git"
+  },
+  "bugs": {
+    "url": "https://github.com/SpikeJulia/Aurora-Swapper/issues"
+  },
   "dependencies": {
     "extract-zip": "^2.0.1",
     "7zip-bin": "^5.2.0"
@@ -56,9 +64,9 @@
         "deb"
       ],
       "category": "Game",
-      "maintainer": "Rakan Alkhaldi",
+      "maintainer": "spikejulia",
       "icon": "app_iocn.png",
-      "artifactName": "DLSS5-Swapper-${version}-${arch}.${ext}"
+      "artifactName": "Aurora-Swapper-${version}-${arch}.${ext}"
     },
     "compression": "maximum",
     "portable": {

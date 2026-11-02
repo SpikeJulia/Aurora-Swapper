@@ -57,7 +57,7 @@ Aurora 专项包含包校验、复制/代理切换、备份与还原、事务恢
 - 修复回归：脚本恢复新旧记录不同、脚本 Restore 失败重试、复制快照回滚后继续 Restore、游戏/PowerShell 进程运行或状态未知、恢复提交存储失败、正式 Restore 失败后重试均验证实际临时文件副作用。
 - 更新后 `npm test`：78 通过、0 失败；目标服务测试 `node --test test/aurora/service.test.js`：16 通过、0 失败。
 - 更新后 `npm run test:legacy`：281 项，268 通过、11 失败、2 跳过；11 个失败名称与执行前基线一致。失败分布包括配置路径、UI 标记、Xbox 路径、Overlay、payload 文案、社区控件和 shader compiler，不能概括为仅社区页/Overlay。
-- Windows x64 portable 构建：成功。为保留原有 `dist/Aurora-Swapper-0.1.0-portable.exe`，新包输出到隔离目录：`/Users/tangxuan/Deverloper/workspace/doc/.worktrees/aurora-swapper/dist/aurora-reliability-2026-09-29/Aurora-Swapper-0.1.0-portable.exe`。
+- Windows x64 portable 构建：成功。为保留原有 `dist/Aurora-Swapper-0.1.0-portable.exe`，新包输出到隔离目录：`<repo>/.worktrees/aurora-swapper/dist/aurora-reliability-2026-09-29/Aurora-Swapper-0.1.0-portable.exe`。
 - 文件大小：76,025,035 字节（约 73 MiB）。
 - SHA-256：`ac12b269d6f9e80fbe3ab60dab41f0e720394fb5cd03b4bcbc7892f6d371f5c4`。
 - Mac Electron 冒烟：用临时 `userData` `/tmp/aurora-swapper-smoke.d8j8OD/data` 和假游戏目录启动了应用；由于 Mac 锁屏且无法自动解锁，未能检查窗口、六页、详情/右键反馈或异常提示，因此不计为 UI 验收通过。临时数据未删除。

@@ -15,7 +15,7 @@
 
 ## 自动验证
 
-工作目录：`/Users/tangxuan/Deverloper/workspace/doc/.worktrees/aurora-swapper`
+工作目录：`<repo>/.worktrees/aurora-swapper`
 
 | 命令 | 结果 |
 |---|---|
@@ -30,7 +30,7 @@
 ## Windows portable 构建
 
 - 命令：`ELECTRON_MIRROR="https://npmmirror.com/mirrors/electron/" ELECTRON_BUILDER_BINARIES_MIRROR="https://npmmirror.com/mirrors/electron-builder-binaries/" npx electron-builder --win portable --x64`
-- 产物：`/Users/tangxuan/Deverloper/workspace/doc/.worktrees/aurora-swapper/dist/Aurora-Swapper-0.1.0-portable.exe`
+- 产物：`<repo>/.worktrees/aurora-swapper/dist/Aurora-Swapper-0.1.0-portable.exe`
 - 大小：76,027,651 bytes；SHA-256：`bca0c03001d43d808b666afdb500a88b9a9ea208988f4d3f503e6c23798d7ad3`
 - 只确认构建成功；尚未在 Windows 上启动该产物或走安装/修复/还原流程。
 

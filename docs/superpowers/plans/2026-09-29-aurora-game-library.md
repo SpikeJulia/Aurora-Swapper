@@ -18,7 +18,7 @@
 
 ## Global Constraints
 
-- 工作目录：`/Users/tangxuan/Deverloper/workspace/doc/.worktrees/aurora-swapper`；分支：`aurora-swapper`。
+- 工作目录：`<repo>/.worktrees/aurora-swapper`；分支：`aurora-swapper`。
 - 保留现有未提交修改；不得提交、合并或发布，除非用户另外要求。
 - 本轮界面合并不修改 `src/aurora/`、`runtime_sync.ps1`、安装记录格式和备份格式。
 - 所有安装、修复和还原继续经过现有 `runAuroraAction` 和 Aurora IPC；不新增独立安装入口。

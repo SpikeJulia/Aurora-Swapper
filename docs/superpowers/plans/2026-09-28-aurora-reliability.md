@@ -12,7 +12,7 @@
 
 ## 工作位置和边界
 
-- 唯一开发目录：`/Users/tangxuan/Deverloper/workspace/doc/.worktrees/aurora-swapper`。
+- 唯一开发目录：`<repo>/.worktrees/aurora-swapper`。
 - 分支必须为 `aurora-swapper`。不合并 main，不切换分支，不在主仓库修改代码。
 - 本文只是一份方案。此前用户要求“不修改 src/aurora/”；任务 1–4 的实施需要对此作有限例外。用户交付本文并明确要求按本文实施时，执行范围为下列 JS 安装封装及测试，不涉及 Aurora 本体。如果后续指令仍明确禁止修改该目录，则只能执行不依赖这些修改的任务并报告冲突，不能声称六项全部解决。
 - 不修改/引入 Aurora C++ 源码，不修改用户提供的发布包和 `runtime_sync.ps1`，不运行 `setup_windows.bat`。
@@ -186,4 +186,4 @@ ELECTRON_MIRROR="https://npmmirror.com/mirrors/electron/" ELECTRON_BUILDER_BINAR
 
 ## 给 Luna 的执行提示词
 
-请在 `/Users/tangxuan/Deverloper/workspace/doc/.worktrees/aurora-swapper` 的 `aurora-swapper` 分支，按 `docs/superpowers/plans/2026-09-28-aurora-reliability.md` 依次执行任务 0–7。本次允许为该计划限定的可靠性修复修改 `src/aurora/` 的 JS 安装封装和测试；不要修改 Aurora 本体、发布包或 runtime_sync.ps1。先复现再修复，保持现有未提交改动，不合并 main、不 push。不要重做旧计划的 Swapper 导入。能在 Mac 验证的测试和 portable 打包做完；Windows 条件不具备时列出准确的待验收项，不宣称已经验证。最后汇报各任务、测试结果、剩余失败和产物路径。
+请在 `<repo>/.worktrees/aurora-swapper` 的 `aurora-swapper` 分支，按 `docs/superpowers/plans/2026-09-28-aurora-reliability.md` 依次执行任务 0–7。本次允许为该计划限定的可靠性修复修改 `src/aurora/` 的 JS 安装封装和测试；不要修改 Aurora 本体、发布包或 runtime_sync.ps1。先复现再修复，保持现有未提交改动，不合并 main、不 push。不要重做旧计划的 Swapper 导入。能在 Mac 验证的测试和 portable 打包做完；Windows 条件不具备时列出准确的待验收项，不宣称已经验证。最后汇报各任务、测试结果、剩余失败和产物路径。
