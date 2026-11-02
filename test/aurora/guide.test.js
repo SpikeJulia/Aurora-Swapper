@@ -75,6 +75,91 @@ test('the introduction keeps the same shape in both languages', () => {
   }
 });
 
+test('the guide explains GPU support per series instead of a vague "works on modern cards"', () => {
+  assert.ok(guide, 'the offline guide must be available');
+  const sections = guide.data.sections;
+  assert.equal(sections[1].id, 'hardware', 'the hardware section must follow the introduction');
+
+  const hardware = sections[1];
+  const ids = hardware.entries.map(entry => entry.id);
+  for (const expected of ['gpu-nvidia', 'gpu-amd', 'gpu-intel', 'gpu-gates']) {
+    assert.ok(ids.includes(expected), `the hardware section must explain ${expected}`);
+  }
+
+  const zh = hardware.entries.map(entry => entry.body.zh.join('\n')).join('\n');
+  assert.match(zh, /RTX 40/, 'names the RTX 40 series');
+  assert.match(zh, /RTX 30/, 'names the RTX 30 series');
+  assert.match(zh, /RTX 20/, 'names the RTX 20 series');
+  assert.match(zh, /RX 7000/, 'names the RX 7000 series');
+  assert.match(zh, /RX 6000/, 'names the RX 6000 series');
+  assert.match(zh, /Arc/, 'names Intel Arc');
+  assert.match(zh, /超分输入/, 'states the game-side requirement');
+  assert.match(zh, /DX12/, 'states the API requirement');
+
+  // Where AMD's current table and the pinned upstream docs disagree, both readings are shown.
+  assert.match(zh, /FSR4/, 'mentions FSR4 support');
+  assert.match(zh, /RDNA3/, 'mentions the pinned upstream RDNA scope');
+});
+
+test('the hardware section is searchable by a card model', () => {
+  const results = guide.searchGuide('RTX 40', 'zh');
+  assert.ok(
+    results.flatMap(section => section.entries).some(entry => entry.id === 'gpu-nvidia'),
+    'a card model must find the GPU article'
+  );
+  const amd = guide.searchGuide('RX 7000', 'zh');
+  assert.ok(
+    amd.flatMap(section => section.entries).some(entry => entry.id === 'gpu-amd'),
+    'an AMD model must find the GPU article'
+  );
+});
+
+test('every section keeps the same shape in both languages', () => {
+  for (const section of guide.data.sections) {
+    for (const entry of section.entries) {
+      const shape = body => body.map(line => (line.startsWith('- ') ? 'bullet' : 'paragraph'));
+      assert.deepEqual(
+        shape(entry.body.zh), shape(entry.body.en),
+        `${section.id}/${entry.id} must list the same points in both languages`
+      );
+      assert.equal(entry.body.zh.length, entry.body.en.length, `${section.id}/${entry.id} must keep both languages in step`);
+    }
+  }
+});
+
+test('the operating steps name this app buttons and say what success looks like', () => {
+  const quick = guide.data.sections.find(section => section.id === 'quick-start');
+  const steps = quick.entries.find(entry => entry.id === 'first-install');
+  assert.ok(steps, 'the quick start keeps its five steps');
+  const zh = steps.body.zh.join('\n');
+  assert.match(zh, /设置/, 'the steps point at the settings page');
+  assert.match(zh, /添加游戏/, 'the steps point at adding the game');
+  assert.match(zh, /历史/, 'the steps point at the history page');
+  assert.match(zh, /确认点/, 'the steps say what a successful install looks like');
+  assert.match(zh, /不要另外去跑 setup_windows\.bat/, 'the steps tell people not to run the interactive setup script');
+
+  const buttons = quick.entries.find(entry => entry.id === 'app-buttons');
+  assert.ok(buttons, 'the guide explains what each button does');
+  const buttonText = buttons.body.zh.join('\n');
+  assert.match(buttonText, /修复运行库/, 'the repair action is explained');
+  assert.match(buttonText, /还原/, 'the restore action is explained');
+  assert.match(buttonText, /下载发布包/, 'the package download is explained');
+});
+
+test('the guide tells the user how to find the real game folder and how to test one change at a time', () => {
+  const basics = guide.data.sections.find(section => section.id === 'basics');
+  const folder = basics.entries.find(entry => entry.id === 'game-folder');
+  assert.ok(folder, 'the guide explains how to find the game folder');
+  assert.match(folder.body.zh.join('\n'), /任务管理器/, 'the folder search uses Task Manager');
+
+  const tuning = guide.data.sections.find(section => section.id === 'tuning');
+  const loop = tuning.entries.find(entry => entry.id === 'tuning-loop');
+  assert.ok(loop, 'the guide explains a repeatable test loop');
+  const loopText = loop.body.zh.join('\n');
+  assert.match(loopText, /基线/, 'the loop starts from a baseline');
+  assert.match(loopText, /只改一项/, 'the loop changes one setting at a time');
+});
+
 test('guide version matching distinguishes valid packages from local unknown and corrupt state', () => {
   assert.equal(typeof guide.versionState, 'function');
   for (const [input, expected] of [

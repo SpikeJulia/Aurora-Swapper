@@ -12,7 +12,7 @@
   const restartRoute = pair('保存后完全退出并重新启动游戏；不要只返回主菜单。', 'Save, fully exit, and relaunch the game; returning to the main menu is not enough.');
   const liveCheck = pair('面板可提供即时调整；保存后重新进入同一场景对比。直接编辑 INI 时退出游戏再改。', 'The overlay may allow live adjustment. Save and compare the same scene. Exit the game before editing the INI directly.');
   const data = {
-    version: 'aurora-v1.1.2', reviewedAt: '2026-10-09',
+    version: 'aurora-v1.1.2', reviewedAt: '2026-11-02',
     commit: '1d22875d05fac2d7ffb86ed912b943ce1a6e915a',
     sources: [
       { id: 'aurora-guide', title: pair('上游安装与使用', 'Upstream usage guide'), path: 'docs/GUIDE.zh-CN.md', enPath: 'docs/GUIDE.en.md' },
@@ -64,13 +64,13 @@
         ]), ['修改器', '反作弊', 'anti-cheat', 'Mod Loader', '延迟', 'latency']),
         article('before-you-start', pair('开始前你需要准备', 'What you need before starting'), pair([
           '- 一台 Windows 10/11 64 位电脑。Mac 上只能看界面，装不了游戏。',
-          '- 一块较新的显卡和装好的驱动。OptiScaler 支持多种显卡，但能用哪些功能取决于硬件。',
+          '- 一块较新的显卡和装好的驱动。你能拿到哪些功能取决于显卡型号，详见下一章「显卡与硬件要求」。',
           '- 一个能正常启动的游戏。UE 引擎的游戏注意：要选真正跑起来的 EXE 所在文件夹（常见是 Binaries\\Win64），不是启动器文件夹。',
           '- 一个 Aurora 发布包。可以在设置里直接下载，也可以指定本机已经解压好的目录。',
           '- 安装前把游戏完全退出。被替换掉的游戏原文件，程序会替你备份好，还原时原样放回。'
         ], [
           '- A 64-bit Windows 10 or 11 machine. macOS can show the interface but cannot install anything.',
-          '- A reasonably recent GPU with its drivers installed. OptiScaler runs on several vendors, but which features work depends on the hardware.',
+          '- A reasonably recent GPU with its drivers installed. Which features you get depends on the GPU model; see the next chapter, "GPU and hardware requirements".',
           '- A game that starts normally. For Unreal titles, pick the folder holding the EXE that actually runs (often Binaries\\Win64), not the launcher folder.',
           '- An Aurora package. Download it in Settings, or point at an already extracted folder on this machine.',
           '- Close the game completely before installing. The original files that get replaced are backed up for you and put back byte for byte on restore.'
@@ -91,20 +91,98 @@
           '- Package: the Aurora program files. That is what this app manages.'
         ]), ['代理 DLL', 'Proxy', 'INI', '运行库', 'Runtime', '发布包', 'Package'])
       ] },
+      // GPU support is a property of the pinned upstream release, not of this
+      // app, so it lives in its own section next to the introduction instead
+      // of inside it.
+      { id: 'hardware', title: pair('显卡与硬件要求', 'GPU and hardware requirements'), description: pair('先看你的显卡能拿到什么功能，再决定值不值得折腾。', 'Check what your GPU can deliver before deciding whether it is worth the effort.'), entries: [
+        article('gpu-nvidia', pair('NVIDIA 显卡', 'NVIDIA GPUs'), pair([
+          '- RTX 50 系（Blackwell，50xx）：功能最全。超分、光线重建、帧生成、多帧生成都有。',
+          '- RTX 40 系（Ada，40xx）：超分、光线重建、帧生成都有。Aurora v1.1.2 主打的 RTX 40 多帧生成（最高 6X）就是给这一代做的社区兼容处理。',
+          '- RTX 30 系（Ampere，30xx）：超分、光线重建、DLSS 帧生成都有，没有多帧生成。',
+          '- RTX 20 系（Turing，20xx）：有超分和光线重建，没有帧生成。',
+          '- GTX 16 系和 GTX 10 系：只有 DLSS 2 超分，没有帧生成，也没有光线重建。',
+          '- 笔电显卡按同代台式卡算。上游有 RTX 4080 Laptop 的历史实测记录。'
+        ], [
+          '- RTX 50 series (Blackwell, 50xx): everything. Upscaling, ray reconstruction, frame generation, and multi-frame generation.',
+          '- RTX 40 series (Ada, 40xx): upscaling, ray reconstruction, and frame generation. The RTX 40 multi-frame generation up to 6X that Aurora v1.1.2 leads with is community compatibility work for this generation.',
+          '- RTX 30 series (Ampere, 30xx): upscaling, ray reconstruction, and DLSS frame generation, but no multi-frame generation.',
+          '- RTX 20 series (Turing, 20xx): upscaling and ray reconstruction, no frame generation.',
+          '- GTX 16 series and GTX 10 series: DLSS 2 upscaling only, without frame generation or ray reconstruction.',
+          '- Laptop GPUs count as their desktop counterparts. Upstream has a historical report for an RTX 4080 Laptop.'
+        ]), ['RTX', 'RTX 40', 'RTX 30', 'RTX 20', 'GTX', 'NVIDIA', '多帧生成', 'multi-frame generation']),
+        article('gpu-amd', pair('AMD 显卡', 'AMD GPUs'), pair([
+          '- AMD 没有 DLSS 路线，走的是 FSR 和 XeSS。能不能用某个后端，取决于游戏本身提供哪种超分输入。',
+          '- RX 9000 系（RDNA4）：AMD FSR 升频（ML）和 FSR "Redstone" 全套可用。',
+          '- RX 7000 系（RDNA3）：AMD FSR 3 帧生成可用。Aurora v1.1.2 锁定的上游文档写明 FSR4 官方只支持 RDNA4 和 RDNA3 独显。',
+          '- RX 6000 系（RDNA2）：FSR 3 帧生成可用（AMD 官方把帧生成的下限放在 RX 5000）。AMD 当前文档已把 FSR4 的机器学习升频覆盖到 RX 6000，但 Aurora v1.1.2 锁定的上游文档仍标注官方仅 RDNA3／RDNA4。',
+          '- RX 5000 系（RDNA2）：AMD 官方表里 FSR 3 帧生成从这一代起可用；再往下（RX 590 及更早）只剩 FSR 2 超分。',
+          '- 帧生成路线也不同：AMD 上通常是 OptiFG 配 FSR3-FG 或 XeFG，而不是 DLSSG。所以 6X 那套参数在 AMD 上不适用。'
+        ], [
+          '- AMD has no DLSS route; it goes through FSR and XeSS. Which backend works depends on the upscaling input the game itself offers.',
+          '- RX 9000 series (RDNA4): the full AMD FSR upscaling (ML) and FSR "Redstone" feature set.',
+          '- RX 7000 series (RDNA3): AMD FSR 3 frame generation works. The upstream docs pinned to Aurora v1.1.2 state FSR4 officially supports RDNA4 and RDNA3 discrete GPUs only.',
+          '- RX 6000 series (RDNA2): FSR 3 frame generation works (AMD puts the frame-generation floor at RX 5000). AMD current docs cover FSR4 ML upscaling on RX 6000, but the upstream docs pinned to Aurora v1.1.2 still say RDNA3/RDNA4 dGPUs only.',
+          '- RX 5000 series (RDNA2): FSR 3 frame generation works from this generation up in AMD official tables; below that (RX 590 and older) only FSR 2 upscaling remains.',
+          '- The frame-generation route differs too: on AMD it is usually OptiFG with FSR3-FG or XeFG, not DLSSG. The 6X parameters do not apply.'
+        ]), ['AMD', 'RX 9000', 'RX 7000', 'RX 6000', 'RX 5000', 'RDNA', 'FSR', 'OptiFG', 'XeFG']),
+        article('gpu-intel', pair('Intel 与其它显卡', 'Intel and other GPUs'), pair([
+          '- Intel Arc：可以用 XeSS。上游说明 OptiScaler 会在 Arc 上识别 XeSS 来启用 XMX。',
+          '- 核显和更老的独显：能不能用取决于游戏提供的超分输入和渲染 API，本指南不逐型号承诺。',
+          '- 重要提醒：上面说的是硬件跑不跑得动。Aurora 能不能装上、游戏里能不能出画面，还取决于游戏本身有没有超分选项。'
+        ], [
+          '- Intel Arc: XeSS works. Upstream documents that OptiScaler detects XeSS on Arc to enable XMX.',
+          '- Integrated graphics and older discrete cards: what works depends on the upscaling input the game offers and the rendering API. This guide does not promise per-model support.',
+          '- Important: the above is about what the hardware can run. Whether Aurora installs and shows up in game still depends on the game having an upscaling option at all.'
+        ]), ['Intel', 'Arc', 'XeSS', 'XMX', '核显', 'integrated']),
+        article('gpu-gates', pair('比显卡型号更容易卡住人的四条', 'Four gates that trip people up more than the GPU model'), pair([
+          '这四条比显卡型号更容易让人白折腾一遍，先看它们：',
+          '- 游戏本身要有超分输入。Aurora 是"换掉"游戏已经有的超分算法，不是凭空给游戏加上超分。游戏只有原生 DLSS 而没有 FSR 输入时，FSR 路线就用不上。',
+          '- 渲染 API 要在支持范围内。上游支持 DX11、DX12、Vulkan，但每个 API 可选的超分后端不同；OptiFG 帧生成只支持 DX12。',
+          '- 驱动版本要对。功能依赖实际加载的 DLSSG／Streamline 版本，不是发布包目录里有什么文件。',
+          '- 同一个游戏只能有一个代理。同目录里已经有别的 Mod Loader 时，先弄清归属再决定用哪个代理名。'
+        ], [
+          'These four cause more wasted effort than the GPU model, so read them first:',
+          '- The game must provide an upscaling input. Aurora replaces an upscaler the game already has; it does not add upscaling where none exists. If a game only ships native DLSS with no FSR input, the FSR route cannot be used.',
+          '- The rendering API must be supported. Upstream supports DX11, DX12, and Vulkan, but each API offers different upscaler backends; OptiFG frame generation is DX12 only.',
+          '- The driver version matters. Features depend on the actually loaded DLSSG/Streamline build, not on which files sit in the package folder.',
+          '- One proxy per game. If another mod loader is already in the folder, work out who owns it before picking a proxy name.'
+        ]), ['超分输入', 'upscaling input', 'DX11', 'DX12', 'Vulkan', '驱动', 'driver'])
+      ] },
       { id: 'quick-start', title: pair('快速上手', 'Quick start'), description: pair('从准备发布包到第一次打开游戏内面板。', 'From selecting a package to opening the in-game overlay.'), entries: [
         article('first-install', pair('第一次使用：按这五步操作', 'First installation: five steps'), pair([
-          '1. 在游戏库或设置中下载完整 Aurora 发布包，或指定已解压的有效发布目录。下载新版只更换备用发布包，不会自动更新每个游戏。',
-          '2. 添加游戏，确认安装目录是实际运行的游戏 EXE 所在目录。UE 游戏常见为 Binaries\\Win64；启动器目录不一定正确。安装前完全退出游戏。',
-          '3. 在游戏详情中选择 Proxy（代理 DLL）。一般从 dxgi.dll 开始；有专用说明的游戏以说明为准。不要覆盖归属不明的其他 Mod Loader。',
-          '4. 点击本程序的安装按钮，检查结果和历史日志。本程序负责部署并调用 runtime_sync.ps1，不需要另外运行 setup_windows.bat。',
-          '5. 正常启动游戏，进入可渲染场景，按 Insert 打开 Aurora 面板。先验证基本画面，再逐项开启额外功能。'
+          '1. 准备发布包。到本程序的「设置」页点「下载发布包」，等它下载并校验完；也可以点「本地指定」选一个已经解压好的目录。发布包必须是完整的一整套，只有一个 OptiScaler.dll 不够。',
+          '2. 添加游戏。到游戏库点「添加游戏」，选游戏真正在跑的那个 EXE 所在的文件夹。找不到就用任务管理器展开游戏进程，右键「打开文件所在的位置」。UE 游戏通常在 Binaries\\Win64，不是启动器目录。',
+          '3. 选代理。点开这个游戏，选一个代理 DLL（Proxy）。一般从 dxgi.dll 开始；上游给 Neverness to Everness 的建议是 winmm.dll。同一款游戏里只留一个代理，不要覆盖归属不明的其他 Mod Loader。',
+          '4. 退出游戏再装。确认游戏进程已经完全结束，点「安装」。本程序会部署文件并调用 runtime_sync.ps1 同步运行库，不要另外去跑 setup_windows.bat。',
+          '5. 看结果再进游戏。安装完到「历史」页确认这一条记录是成功，再启动游戏、进到能渲染画面的场景，按 Insert 打开 Aurora 面板。先确认画面正常，再逐项开额外功能。',
+          '四个确认点：发布包状态是「已配置」、游戏状态从「未安装」变成「已安装」、历史里有成功记录、游戏里按 Insert 能出面板。四项都满足才算装完。'
         ], [
-          '1. Download a complete Aurora package in Library or Settings, or select a valid extracted directory. Downloading a newer package does not automatically update installed games.',
-          '2. Add the game and verify the folder containing its real running EXE. Unreal Engine games often use Binaries\\Win64, not the launcher folder. Fully close the game before installation.',
-          '3. Select a proxy DLL in game details. Start with dxgi.dll unless game-specific guidance says otherwise. Never overwrite another loader of unknown ownership.',
-          '4. Click Install in this app and inspect the result and History. The app deploys files and calls runtime_sync.ps1; do not separately run setup_windows.bat.',
-          '5. Launch normally, enter a rendered scene, and press Insert. Confirm basic loading before enabling additional features.'
+          '1. Prepare the package. In Settings click "Download package" and wait for the download and verification to finish, or click "Specify locally" and pick an already extracted folder. The package must be the complete set; a single OptiScaler.dll is not enough.',
+          '2. Add the game. In the library click "Add game" and pick the folder holding the EXE that actually runs. If you cannot find it, expand the game process in Task Manager and right-click "Open file location". UE games usually live in Binaries\\Win64, not the launcher folder.',
+          '3. Pick a proxy. Open the game and choose a proxy DLL. Start with dxgi.dll; upstream recommends winmm.dll for Neverness to Everness. Keep only one proxy per game and never overwrite another mod loader of unknown ownership.',
+          '4. Exit the game before installing. Make sure the game process is fully gone, then click "Install". The app deploys the files and calls runtime_sync.ps1 to sync the runtimes; do not separately run setup_windows.bat.',
+          '5. Read the result, then enter the game. After installing, check in History that the entry succeeded, then launch the game, enter a rendered scene, and press Insert for the Aurora overlay. Confirm the image looks right before enabling anything else.',
+          'Four checkpoints: the package state reads configured, the game state changed from not installed to installed, History holds a successful entry, and Insert opens the overlay in game. All four mean the install is done.'
         ]), ['Install', 'runtime_sync.ps1', 'Proxy', 'Insert']),
+        article('app-buttons', pair('本程序里每个按钮做什么', 'What each button in this app does'), pair([
+          '- 设置页的「下载发布包」：从上游 Release 下载完整发布包，校验 SHA-256 后解压。下载失败会保留你现有的有效发布包，不会覆盖。',
+          '- 设置页的「本地指定」：指向本机已经解压好的发布包目录，之后不再联网下载。',
+          '- 设置页的「检查更新」：比较当前发布包和上游最新版本，24 小时缓存一次。发现新版时由你决定要不要下载；下载新版不会自动更新已经装好的游戏。',
+          '- 游戏库的「添加游戏」：把一个游戏目录加进来，之后才能对它安装／修复／还原。',
+          '- 游戏详情里的「安装」：把 Aurora 的运行库和一个代理 DLL 部署到游戏目录，并调用 runtime_sync.ps1 同步运行库。',
+          '- 游戏详情里的「修复运行库」：游戏更新或启动器校验之后，把被改回去的文件补回正确状态。',
+          '- 游戏详情里的「还原」：撤掉 Aurora 装进去的文件，把游戏原本的 DLL 备份原样放回。',
+          '- 侧栏「历史」：每次安装／修复／还原的时间、状态、路径和错误都在这里。装完不看历史等于没装。'
+        ], [
+          '- "Download package" in Settings: downloads the complete package from the upstream release, verifies SHA-256, and unpacks it. A failed download keeps your existing valid package instead of overwriting it.',
+          '- "Specify locally" in Settings: points at an already extracted package folder on this machine, with no further downloads.',
+          '- "Check for updates" in Settings: compares the current package with the latest upstream release, cached for 24 hours. When a newer one exists you decide whether to download it, and a new download does not update already installed games.',
+          '- "Add game" in the library: adds a game folder so you can install, repair, or restore it.',
+          '- "Install" in game details: deploys the Aurora runtimes and one proxy DLL into the game folder and calls runtime_sync.ps1 to sync the runtimes.',
+          '- "Repair runtimes" in game details: restores the correct file state after a game update or a launcher verification.',
+          '- "Restore" in game details: removes the files Aurora added and puts the original DLL backups back exactly as they were.',
+          '- "History" in the sidebar: holds the time, state, paths, and errors of every install, repair, and restore. An install you do not read in History is an install you cannot trust.'
+        ]), ['按钮', 'button', '下载发布包', 'Install', 'Restore', 'History', '设置', 'Settings']),
         article('safe-use', pair('先确认适用范围', 'Check the scope first'), pair([
           '本应用的安装、修复和还原面向 Windows 10/11 x64。Mac 只用于开发，不提供真实游戏安装。',
           'Aurora 是社区版本，不是 NVIDIA 官方发行版。显卡、驱动、游戏版本和渲染 API 都会影响可用功能；更高的显示 FPS 不等于更低的输入延迟。',
@@ -116,6 +194,19 @@
         ]), ['anti-cheat', 'Windows', 'GPU'])
       ] },
       { id: 'basics', title: pair('基础设置与保存', 'Basic settings and saving'), description: pair('分清游戏设置、面板设置与桌面安装操作。', 'Separate game settings, overlay settings, and desktop installation.'), entries: [
+        article('game-folder', pair('怎么找对游戏目录', 'Finding the right game folder'), pair([
+          '- 最稳的办法：游戏跑着的时候打开任务管理器，在「详细信息」页右键游戏进程，选「打开文件所在的位置」。那里就是真正在跑的 EXE 所在目录。',
+          '- UE 引擎的游戏通常在 <游戏目录>\\Engine\\Binaries\\Win64\\。启动器目录（游戏根目录）里往往没有真正的 EXE，装到那儿不会生效。',
+          '- 目录认错的典型后果：安装显示成功，但游戏里按 Insert 没反应，因为代理 DLL 根本没被加载。',
+          '- 确认方法：安装完在游戏目录里应能看到你选的代理 DLL（例如 dxgi.dll）和 Aurora 的运行库文件。目录里什么都没有，说明选错目录或安装没落到这里。',
+          '- 动手前先扫一眼目录：如果已经有别的 dxgi.dll、winmm.dll、version.dll，先确认它属于谁，再决定用哪个代理名。同一目录只能有一个代理生效。'
+        ], [
+          '- The most reliable method: while the game is running, open Task Manager, right-click the game process on the Details tab, and choose "Open file location". That is the folder holding the EXE that actually runs.',
+          '- Unreal Engine games usually live in <game folder>\\Engine\\Binaries\\Win64\\. The launcher folder (the game root) often has no real EXE, and installing there does nothing.',
+          '- The typical symptom of a wrong folder: the install reports success, but Insert does nothing in game, because the proxy DLL was never loaded.',
+          '- How to check: after installing, the game folder should contain the proxy DLL you picked (for example dxgi.dll) and the Aurora runtime files. If nothing is there, the folder was wrong or the install landed elsewhere.',
+          '- Look before you act: if the folder already holds another dxgi.dll, winmm.dll, or version.dll, find out who owns it before choosing a proxy name. Only one proxy can take effect per folder.'
+        ]), ['游戏目录', 'game folder', 'Binaries', 'EXE', 'Task Manager', '任务管理器']),
         article('input-vs-output', pair('游戏内超分与 Aurora 输出不是一回事', 'Game input is not the Aurora output'), pair([
           '游戏中的 DLSS／FSR／XeSS 选项可以提供 Aurora 所需输入；Aurora 的 Upscaler 选择实际输出后端。两者名称不一定相同。',
           'FG Input／FG Output 是帧生成的另一组输入输出，不能与超分输入混为一谈。只安装 DLL 不会让任何游戏自动拥有全部功能。'
@@ -159,6 +250,21 @@
         parameter('logging', pair('日志输出与等级', 'Log files and verbosity'), ['[Log] LogToFile', '[Log] LogLevel', '[Log] LogFileName', '[Log] SingleFile'], pair(['排障时开启文件日志，再复现一次。日志量太大会占磁盘；不要长期把高详细度日志当成性能监控。', '提交 OptiScaler.log 前检查用户目录、路径等个人信息。单文件模式决定复用日志还是按会话新建。'], ['Enable file logging while troubleshooting, then reproduce once. Verbose logging can consume disk space and is not a permanent performance monitor.', 'Review OptiScaler.log for personal paths before sharing. SingleFile controls reusing one log versus creating session files.']), pair('LogToFile：auto／true／false；LogLevel：0 Trace、1 Debug、2 Info、3 Warning、4 Error。', 'LogToFile: auto/true/false; LogLevel: 0 Trace, 1 Debug, 2 Info, 3 Warning, 4 Error.'), pair('需要复现安装后游戏内的问题。桌面历史日志与游戏日志是两个来源。', 'For reproducing in-game problems. Desktop History and game logs are separate sources.'), restartRoute)
       ] },
       { id: 'tuning', title: pair('调参思路', 'Tuning strategies'), description: pair('先建立基线，再在稳定、画质和帧率之间取舍。', 'Establish a baseline before trading stability, quality, and frame rate.'), entries: [
+        article('tuning-loop', pair('一次只改一项的实测流程', 'A test loop that changes one setting at a time'), pair([
+          '- 第 0 步 · 建立基线：不开帧生成、不开神经渲染，在固定场景记下原生帧率、帧时间和主观画质。这就是你的对照组。',
+          '- 第 1 步 · 只改一项：改完保存。换了代理、FG 路线或运行库必须完全退出游戏再启动，只回主菜单不算。',
+          '- 第 2 步 · 同一场景复测：在同一段路线、同一画质档、同一分辨率下跑 1–2 分钟，记三样：显示帧率、帧时间稳不稳、有没有鬼影或闪烁。',
+          '- 第 3 步 · 写一行记录：日期｜改了什么｜结果｜要不要回退。格式越朴素越好，能一眼看出是哪一步出的问题。',
+          '- 第 4 步 · 先回退再叠加：效果不如预期就恢复上一个正常值，而不是接着再改一项。回退用你的 INI 备份，或退出游戏后用本程序的「还原」。',
+          '- 别做的事：同时改代理、FG 输入输出和倍率；神经渲染和 DualFeature 一起开；拿静态截图判断运动画质；只看下载包里的 DLL 版本就断定运行库已加载。'
+        ], [
+          '- Step 0, baseline: no frame generation, no neural rendering. Record the native frame rate, frame time, and how the image looks in a fixed scene. This is your reference.',
+          '- Step 1, one change: save after editing. A new proxy, FG route, or runtime requires fully exiting and relaunching the game; returning to the main menu does not count.',
+          '- Step 2, same scene: run 1–2 minutes on the same route, quality preset, and resolution. Record three things: displayed frame rate, frame-time stability, and any ghosting or shimmer.',
+          '- Step 3, one line: date | what changed | result | keep or revert. The plainer the format, the faster you can see which step caused a problem.',
+          '- Step 4, revert before stacking: if the result is not better, restore the last known-good value instead of adding another change on top. Revert with your INI backup, or with this app Restore after closing the game.',
+          '- Do not: change proxy, FG routes, and multiplier together; enable neural rendering and DualFeature at the same time; judge motion quality from still captures; assume runtimes loaded because DLLs sit in the package folder.'
+        ]), ['调参', 'tuning', '基线', 'baseline', '记录', 'one change']),
         article('stable', pair('优先稳定', 'Stability first'), pair(['保留正常工作的 Proxy 和 FG 路线，关闭新增实验功能，DualFeature 保持 false。先不启用神经渲染或高倍率。', '检查无 FG 的真实帧率与帧时间，再测试低倍率；每次只改一项并记录。如果需要回退，恢复 INI 备份或在退出游戏后使用本程序还原。'], ['Keep a working proxy and FG route, disable newly added experiments, and leave DualFeature=false. Start without NR or high multipliers.', 'Measure real FPS and frame time without FG before testing a low multiplier. Change one control and record results. Roll back with your INI backup or this app Restore after closing the game.']), ['稳定', 'stability', 'baseline']),
         article('quality', pair('优先画质', 'Quality first'), pair(['先对比游戏的 Quality／DLAA 等支持档位，再低强度使用锐化；观察运动中的细线、文字和阴影，不只看静态截图。', '有性能余量且确认兼容后才单独尝试神经渲染，逐步对比模型分辨率和效果强度。多 Pass 和高倍率都不是画质必选项。'], ['Compare supported Quality/DLAA modes, then apply mild sharpening. Inspect moving fine lines, text, and shadows rather than only still captures.', 'Try NR separately only with performance headroom and confirmed compatibility. Compare model scale and transfer gradually. Multiple passes and high FG ratios are not required for quality.']), ['画质', 'quality', 'DLAA']),
         article('performance', pair('优先帧率与流畅度', 'Frame rate and pacing first'), pair(['先确保基础渲染帧率和帧时间稳定，再降低超分内部尺寸或神经模型处理尺寸。两者不是同一分辨率设置。', '从可用低倍率逐步增加 FG，观察延迟、画面伪影和帧间均匀性。显示 FPS 更高但操作更迟钝时，不要继续只追倍率。'], ['Stabilize base rendering FPS and frame time first, then consider internal render ratio or NR model scale. These control different resolutions.', 'Increase FG gradually from a supported lower multiplier. Watch latency, artifacts, and pacing. Do not chase higher displayed FPS if responsiveness gets worse.']), ['帧率', 'performance', 'FPS', 'latency'])
@@ -171,6 +277,17 @@
       ] },
       { id: 'faq', title: pair('常见问题与恢复', 'Troubleshooting and recovery'), description: pair('先找具体原因，保留日志和备份。', 'Find the specific cause and preserve logs and backups.'), entries: [
         article('no-overlay', pair('按 Insert 没反应', 'Insert does not open the overlay'), pair(['确认安装在实际游戏 EXE 目录，Proxy 已加载，游戏有有效超分输入；检查快捷键是否冲突。无 Insert 键可尝试 Windows 屏幕键盘。', 'Vulkan 的面板能力和字体处理有版本限制。安装成功不代表游戏内所有功能已初始化；先查看 OptiScaler.log。'], ['Verify the real EXE folder, proxy loading, usable game input, and shortcut conflicts. Try the Windows on-screen keyboard if Insert is absent.', 'Vulkan overlay and font handling have release-specific limitations. Installation success does not prove all in-game features initialized; inspect OptiScaler.log.']), ['Insert', '面板打不开', 'overlay']),
+        article('proxy-conflict', pair('目录里已经有别的 Mod Loader', 'Another mod loader is already in the folder'), pair([
+          '- 同一个目录里只能有一个代理 DLL 生效。同时放两个，游戏只会加载其中一个，另一个是死文件，很容易被误判成「装好了」。',
+          '- 归属不明的加载器不要覆盖：先确认它属于哪个 Mod，再决定用哪个代理名。',
+          '- 确实冲突时：换用游戏专用的代理名（上游对 Neverness to Everness 建议 winmm.dll 而不是 dxgi.dll），或者先用本程序的「还原」清掉自己装过的东西，再按别的加载器的规则重新来。',
+          '- 不确定时先看游戏能不能启动：装了之后启动就崩，多半是代理或同名 DLL 冲突，不是超分设置的问题。'
+        ], [
+          '- Only one proxy DLL can take effect per folder. With two present the game loads one of them, and the other becomes a dead file that is easy to mistake for a successful install.',
+          '- Do not overwrite a loader of unknown ownership: find out which mod it belongs to before choosing a proxy name.',
+          '- When they genuinely conflict: use a game-specific proxy name (upstream recommends winmm.dll over dxgi.dll for Neverness to Everness), or use this app Restore to clear what you installed and start again under the other loader rules.',
+          '- When unsure, check whether the game still launches. A crash right after installing usually means a proxy or same-named DLL conflict, not an upscaling setting problem.'
+        ]), ['Mod Loader', '代理', 'proxy', '冲突', 'conflict', '崩溃', 'crash']),
         article('only-2x', pair('只能选择 2X，或者帧生成不可用', 'Only 2X is available, or FG does not work'), pair(['核对显卡、实际加载的 DLSSG／Streamline、FG 输入输出组合和是否保存重启。不要仅检查下载包中的 DLL 版本。', '先退回已经有效的路线，不要同时启用全部解锁和替换开关。没有实测的组合不保证出现 6X。'], ['Check GPU, actually loaded DLSSG/Streamline, the FG route, and saving/restarting. Do not inspect only DLLs in the downloaded package.', 'Return to a known working route first, rather than enabling every unlock and replacement. Untested combinations are not guaranteed to expose 6X.']), ['2X', '6X', '帧生成不可用', 'MFG']),
         article('crash-corruption', pair('闪退、黑屏、花屏或严重残影', 'Crashes, black screen, corruption, or ghosting'), pair(['先关闭刚开启的神经渲染、DualFeature 或新 FG 路线；恢复上一次正常 INI，并完全重启。按同一场景逐项复现。', '检查同名代理、第三方加载器和混用版本；不要无差别删除 DLL。无法恢复时使用本程序还原，保留失败报告和备份。'], ['Disable newly enabled NR, DualFeature, or a new FG route; restore a working INI and fully restart. Reproduce one change at a time in the same scene.', 'Check proxy-name conflicts, other loaders, and mixed versions. Never delete DLLs indiscriminately. Use this app Restore when needed and preserve failure reports/backups.']), ['闪退', '花屏', '黑屏', '残影', 'crash', 'black screen']),
         article('game-updated', pair('游戏更新或验证完整性后失效', 'Stopped working after game update or verification'), pair(['等待游戏更新完成并退出游戏，在本程序点击“修复运行库”，查看历史结果。运行库被保留可能是防降级或旧版保护，不一定是失败。', '下载新的 Aurora 包与更新已经安装的游戏是两件事；需要按游戏执行相应安装／修复操作，并核对结果。不要强制覆盖无法安全识别的文件。'], ['Wait for the update to finish and close the game, then use Repair runtimes in this app and inspect History. Preserving a runtime may be downgrade/legacy protection, not failure.', 'Downloading Aurora and updating an installed game are separate operations. Perform the appropriate per-game install/repair and inspect the result. Do not force-overwrite unidentified files.']), ['修复', 'repair', 'Steam', 'update']),
