@@ -835,6 +835,7 @@ select option { background: var(--panel); color: var(--text); }
 .games-empty { display: grid; justify-items: center; gap: 9px; padding: 42px 20px; text-align: center; }
 .games-empty h4 { font-size: 15px; }
 .games-empty p { color: var(--muted); font-size: 12.5px; }
+.games-empty-guide { margin-top: 4px; }
 
 .tools { position: absolute; top: 8px; inset-inline-start: 8px; z-index: 3; display: flex; gap: 4px; opacity: 0; transition: opacity .15s ease; }
 .card:hover .tools { opacity: 1; }

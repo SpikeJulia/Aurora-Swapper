@@ -510,7 +510,7 @@ function renderGames() {
 
   let empty = '';
   if (!model.items.length) {
-    empty = `<div class="glass games-empty"><h4>${t('libraryEmpty')}</h4><p>${t('addGameHint')}</p><div class="row games-empty-actions"><button type="button" class="glass-btn sm" id="emptyAddGame">${t('addGameSingle')}</button><button type="button" class="ghost sm" id="emptyAddFolder">${t('addFolder')}</button></div></div>`;
+    empty = `<div class="glass games-empty"><h4>${t('libraryEmpty')}</h4><p>${t('addGameHint')}</p><div class="row games-empty-actions"><button type="button" class="glass-btn sm" id="emptyAddGame">${t('addGameSingle')}</button><button type="button" class="ghost sm" id="emptyAddFolder">${t('addFolder')}</button></div><button type="button" class="ghost sm games-empty-guide" id="emptyOpenGuide">${t('firstTimeGuide')}</button></div>`;
   } else if (!visible.length) {
     empty = `<div class="glass games-empty"><h4>${t('noMatchingGames')}</h4><p>${t('changeFilters')}</p><button type="button" class="ghost sm" id="emptyClearFilters">${t('clearFilters')}</button></div>`;
   }
@@ -524,6 +524,7 @@ function renderGames() {
   $('gamesCount').textContent = t('filteredCount', visible.length, model.items.length);
   $('emptyAddGame')?.addEventListener('click', addSingleGame);
   $('emptyAddFolder')?.addEventListener('click', addGameFolder);
+  $('emptyOpenGuide')?.addEventListener('click', () => show('guide'));
   $('emptyClearFilters')?.addEventListener('click', () => $('clearGameFilters').click());
 }
 

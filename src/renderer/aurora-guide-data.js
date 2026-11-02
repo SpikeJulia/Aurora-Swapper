@@ -20,6 +20,77 @@
       { id: 'aurora-compatibility', title: pair('兼容性与已知限制', 'Compatibility and limitations'), path: 'docs/COMPATIBILITY.zh-CN.md', enPath: 'docs/COMPATIBILITY.en.md' }
     ],
     sections: [
+      // The first section explains the product itself, in plain language, for
+      // people who have never installed anything like this. It describes this
+      // app, not the pinned upstream release, so it does not change when
+      // Aurora is updated.
+      { id: 'intro', title: pair('这是什么', 'What this is'), description: pair('第一次用先看这里：它能做什么、不能做什么、你需要先准备什么。', 'New here? What it does, what it cannot do, and what you need before starting.'), entries: [
+        article('what-is-it', pair('一句话说清它是什么', 'In one sentence, what this is'), pair([
+          'Aurora Swapper 是一个 Windows 桌面小工具：它把 OptiScaler Aurora 装进你的游戏，让游戏能用"超分"把画面放大，还能顺带开帧生成。',
+          '超分是什么：游戏本来按较低的分辨率把画面画出来，再交给显示器拉伸显示，边缘会发糊。开超分之后，游戏按更低的分辨率画，由程序负责放大成显示器的分辨率，GPU 负担更小，画质反而更锐。',
+          '帧生成是什么：在两帧之间补出中间帧，让画面每秒多出几帧，帧率数字会明显变高。代价是可能出现鬼影和拖影，而且它并不能降低操作延迟。',
+          'Aurora 本身是一个社区项目，不是 NVIDIA 的官方软件。OptiScaler 是上游框架，Aurora 是社区在它基础上做的一个版本。',
+          '所以这个程序的角色很简单：它自己不提供任何画质功能，只负责把 Aurora 正确地装进你的游戏、装坏了能修回来、随时能还原。'
+        ], [
+          'Aurora Swapper is a small Windows desktop tool. It installs OptiScaler Aurora into your games so they can upscale the picture, and optionally enable frame generation.',
+          'Upscaling: the game renders below your display resolution and the display stretches the result, which looks soft. With upscaling the game renders even lower and the program enlarges it to the display resolution, so the GPU does less work and the image comes out sharper.',
+          'Frame generation: extra frames are synthesised between real ones, so the frame-rate counter climbs noticeably. The cost is ghosting and smearing, and it does not reduce input latency.',
+          'Aurora is a community project, not NVIDIA software. OptiScaler is the upstream framework; Aurora is a community build on top of it.',
+          'So this program has one job. It adds no graphics features of its own. It installs Aurora into your game correctly, repairs it when it breaks, and takes it back out again.'
+        ]), ['超分', 'Upscaling', '帧生成', 'Frame Generation', 'Aurora', 'OptiScaler']),
+        article('three-jobs', pair('它只做三件事', 'It does exactly three things'), pair([
+          '- 安装：把 Aurora 的运行库和一个"代理 DLL"放进你指定的游戏目录。',
+          '- 修复：游戏更新、启动器校验文件、或者你自己动过目录之后，把文件补回正确状态。',
+          '- 还原：撤掉 Aurora 装进去的文件，并把游戏原本的 DLL 备份原样放回。',
+          '除了这三件事，程序不碰你的游戏：不改游戏本体文件、不上传任何数据、不装其他 Mod、不改游戏数值。'
+        ], [
+          '- Install: place the Aurora runtimes and one proxy DLL into the game folder you chose.',
+          '- Repair: restore the correct file state after a game update, a launcher verification, or your own manual edits.',
+          '- Restore: remove the files Aurora added and put the original DLL backups back exactly as they were.',
+          'Apart from those three, it leaves your game alone: no edits to game files, no uploads, no other mods, no gameplay changes.'
+        ]), ['安装', 'Install', '修复', 'Repair', '还原', 'Restore']),
+        article('not-this', pair('它不是什么', 'What it is not'), pair([
+          '- 它不是修改器：不会改血量、伤害、速度这类游戏数值，也不含任何作弊功能。',
+          '- 它不绕过反作弊：联网游戏可能拒绝加载第三方运行库，甚至带来账号风险。先查游戏规则和兼容性白名单。',
+          '- 它不是"画质增强包"：装上之后到底什么效果，取决于你的显卡、驱动、游戏和设置，需要自己进游戏对比。',
+          '- 它不能保证所有游戏都支持：老的 DirectX 9 游戏，以及已经装了别的 Mod Loader 的游戏，通常装不上或会互相冲突。',
+          '- 帧率变高不等于延迟变低：帧生成补出来的帧会增加操作延迟和鬼影，请按自己的手感和画质取舍。'
+        ], [
+          '- It is not a game trainer: no health, damage, speed, or other gameplay values are touched, and it contains nothing that cheats.',
+          '- It does not bypass anti-cheat: online games may refuse to load third-party runtimes, and there is an account risk. Check the game rules and the compatibility list first.',
+          '- It is not a "graphics overhaul pack": what you actually get depends on your GPU, driver, game, and settings. Compare in game.',
+          '- It cannot be installed everywhere: older DirectX 9 titles, and games that already load another mod loader, usually fail or conflict.',
+          '- A higher frame rate is not a lower latency: generated frames add input delay and ghosting. Pick according to feel and image quality.'
+        ]), ['修改器', '反作弊', 'anti-cheat', 'Mod Loader', '延迟', 'latency']),
+        article('before-you-start', pair('开始前你需要准备', 'What you need before starting'), pair([
+          '- 一台 Windows 10/11 64 位电脑。Mac 上只能看界面，装不了游戏。',
+          '- 一块较新的显卡和装好的驱动。OptiScaler 支持多种显卡，但能用哪些功能取决于硬件。',
+          '- 一个能正常启动的游戏。UE 引擎的游戏注意：要选真正跑起来的 EXE 所在文件夹（常见是 Binaries\\Win64），不是启动器文件夹。',
+          '- 一个 Aurora 发布包。可以在设置里直接下载，也可以指定本机已经解压好的目录。',
+          '- 安装前把游戏完全退出。被替换掉的游戏原文件，程序会替你备份好，还原时原样放回。'
+        ], [
+          '- A 64-bit Windows 10 or 11 machine. macOS can show the interface but cannot install anything.',
+          '- A reasonably recent GPU with its drivers installed. OptiScaler runs on several vendors, but which features work depends on the hardware.',
+          '- A game that starts normally. For Unreal titles, pick the folder holding the EXE that actually runs (often Binaries\\Win64), not the launcher folder.',
+          '- An Aurora package. Download it in Settings, or point at an already extracted folder on this machine.',
+          '- Close the game completely before installing. The original files that get replaced are backed up for you and put back byte for byte on restore.'
+        ]), ['Windows', 'GPU', '驱动', 'driver', '发布包', 'package']),
+        article('jargon', pair('名词速查', 'Glossary'), pair([
+          '- 超分（Upscaling）：低分辨率渲染后放大到显示器分辨率。',
+          '- 代理 DLL（Proxy）：Aurora 的入口文件。程序把它改名成 dxgi.dll 之类放进游戏目录，游戏加载它时就把 Aurora 拉起来。同一款游戏同时只能有一个代理。',
+          '- INI：配置文件。装好之后游戏目录里会出现 OptiScaler.ini，记录 Aurora 的全部开关。',
+          '- 帧生成（Frame Generation）：在真实帧之间补出中间帧。',
+          '- 运行库（Runtime）：NVIDIA 的 DLSS、帧生成等组件。缺了对应组件，相关功能就用不了。',
+          '- 发布包（Package）：Aurora 的程序文件。本程序管理的就是它。'
+        ], [
+          '- Upscaling: rendering below display resolution and enlarging to it.',
+          '- Proxy DLL: the entry point Aurora uses. The app renames it to something like dxgi.dll and drops it in the game folder; when the game loads it, Aurora comes along. One game can only have one active proxy.',
+          '- INI: the configuration file. After installing you will find OptiScaler.ini in the game folder; it holds every Aurora switch.',
+          '- Frame generation: synthesising frames between the real ones.',
+          '- Runtime: the NVIDIA DLSS and frame-generation components. Without the matching component the related feature stays unavailable.',
+          '- Package: the Aurora program files. That is what this app manages.'
+        ]), ['代理 DLL', 'Proxy', 'INI', '运行库', 'Runtime', '发布包', 'Package'])
+      ] },
       { id: 'quick-start', title: pair('快速上手', 'Quick start'), description: pair('从准备发布包到第一次打开游戏内面板。', 'From selecting a package to opening the in-game overlay.'), entries: [
         article('first-install', pair('第一次使用：按这五步操作', 'First installation: five steps'), pair([
           '1. 在游戏库或设置中下载完整 Aurora 发布包，或指定已解压的有效发布目录。下载新版只更换备用发布包，不会自动更新每个游戏。',

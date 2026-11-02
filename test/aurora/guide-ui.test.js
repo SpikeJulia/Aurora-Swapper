@@ -24,6 +24,19 @@ test('overlay labels remain searchable but are not presented as copyable INI key
   assert.doesNotMatch(input, /data-copy-parameter="FG Input"/);
 });
 
+test('the introduction section is open by default and reads as a list of points', () => {
+  assert.ok(ui, 'guide rendering must be available');
+  const html = ui.renderContent({ language: 'zh' });
+  assert.match(html, /id="guide-section-intro"[^>]*open/, 'the introduction opens first for a newcomer');
+  assert.match(html, /这是什么/, 'the Chinese section title is shown');
+  assert.match(html, /guide-list/, 'bulleted points render as a list');
+  assert.match(html, /<li>/, 'the list holds items');
+
+  const english = ui.renderContent({ language: 'en' });
+  assert.match(english, /What this is/, 'the English section title is shown');
+  assert.match(english, /id="guide-section-intro"[^>]*open/);
+});
+
 test('explicit search-time folds take priority over automatic expansion', () => {
   const html = ui.renderContent({ language: 'en', query: 'WorkingScale', searchFolds: new Map([['parameters', false], ['nr-scale', false]]) });
   assert.match(html, /id="guide-entry-nr-scale"/);

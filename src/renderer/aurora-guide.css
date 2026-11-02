@@ -38,6 +38,8 @@
 .guide-entry[open] > summary::before { content: '−'; }
 .guide-entry-body { font-size: 12px; line-height: 1.85; color: var(--muted); overflow-wrap: anywhere; }
 .guide-entry-body p { margin-top: 8px; }
+.guide-list { margin: 10px 0 0; padding-inline-start: 18px; display: grid; gap: 8px; }
+.guide-list li { margin: 0; padding-inline-start: 2px; }
 .guide-entry-body, .guide-entry-body *, .guide-key code { user-select: text; -webkit-user-select: text; }
 .guide-keys { display: flex; flex-wrap: wrap; gap: 6px; margin: 12px 0; }
 .guide-key { display: flex; align-items: center; gap: 8px; max-width: 100%; min-width: 0; padding: 6px 10px; border-radius: 8px; border: 1px solid var(--stroke); background: var(--panel-2); color: var(--text); cursor: pointer; font-size: 11px; text-align: start; }

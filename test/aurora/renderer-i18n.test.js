@@ -67,6 +67,19 @@ test('Chinese collapsible library controls and search labels are localized', () 
   }
 });
 
+test('an empty library points first-time users at the introduction', () => {
+  const i18n = loadI18n();
+  i18n.setLang('zh');
+  assert.match(i18n.t('firstTimeGuide'), /[\u4e00-\u9fff]/);
+  assert.notEqual(i18n.t('firstTimeGuide'), i18n.S.en.firstTimeGuide);
+  i18n.setLang('en');
+  assert.match(i18n.t('firstTimeGuide'), /What this is/);
+
+  const renderer = fs.readFileSync(path.join(root, 'src/renderer/renderer.js'), 'utf8');
+  assert.match(renderer, /id="emptyOpenGuide"/, 'the empty library offers the guide');
+  assert.match(renderer, /emptyOpenGuide'\)\?\.addEventListener\('click', \(\) => show\('guide'\)\)/);
+});
+
 test('ask dialog defaults to Aurora Swapper branding', async () => {
   const listeners = new Map();
   const dialog = {

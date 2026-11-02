@@ -4,7 +4,7 @@
   const guide = typeof module !== 'undefined' && module.exports ? require('./aurora-guide') : window.auroraGuide;
   const strings = {
     zh: {
-      title: '使用指南', subtitle: '先安装，再进游戏调参。按问题查阅，不必一次改完所有选项。',
+      title: '使用指南', subtitle: '第一次用请先看「这是什么」；然后安装，再进游戏调参。按问题查阅，不必一次改完所有选项。',
       offline: '内置离线指南 · 只读，不修改游戏配置', search: '搜索指南', placeholder: '搜索参数名或问题，例如 FG Input、锐化、闪退…',
       clear: '清空搜索', expand: '展开全部', collapse: '折叠全部', contents: '章节导航',
       count: n => `${n} 条说明`, empty: '没有找到相关说明。试试英文参数名或更短的关键词。',
@@ -18,7 +18,7 @@
       unavailable: '发布包记录无法读取，版本暂不可核对；指南仍可离线查看。', linkFailed: '无法打开上游链接，请检查系统浏览器。'
     },
     en: {
-      title: 'Usage guide', subtitle: 'Install first, then configure in game. Look up a question rather than changing every option at once.',
+      title: 'Usage guide', subtitle: 'Start with “What this is” if you are new, then install and configure in game. Look up a question rather than changing every option at once.',
       offline: 'Built-in offline guide · Read-only, no game configuration changes', search: 'Search the guide', placeholder: 'Search a parameter or issue, e.g. FG Input, sharpening, crash…',
       clear: 'Clear search', expand: 'Expand all', collapse: 'Collapse all', contents: 'Chapters',
       count: n => `${n} entries`, empty: 'No matching entries. Try a parameter name or a shorter search.',
@@ -34,9 +34,27 @@
   };
   const esc = value => String(value ?? '').replace(/[&<>"']/g, character => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[character]));
   const copyKey = token => token.replace(/^\[[^\]]+\]\s*/, '');
-  const paragraphs = value => (Array.isArray(value) ? value : [value]).map(line => `<p>${esc(line)}</p>`).join('');
+  const paragraphs = value => {
+    const lines = Array.isArray(value) ? value : [value];
+    let html = '';
+    let items = null;
+    const flush = () => { if (items) { html += `<ul class="guide-list">${items.join('')}</ul>`; items = null; } };
+    for (const line of lines) {
+      const text = String(line ?? '');
+      // A leading "- " marks a bullet; consecutive bullets become one list.
+      if (/^\s*-\s+/.test(text)) {
+        items = items || [];
+        items.push(`<li>${esc(text.replace(/^\s*-\s+/, ''))}</li>`);
+      } else {
+        flush();
+        html += `<p>${esc(text)}</p>`;
+      }
+    }
+    flush();
+    return html;
+  };
 
-  function renderContent({ language = 'zh', query = '', expandedSections = new Set(['quick-start']), expandedEntries = new Set(), searchFolds = new Map() } = {}) {
+  function renderContent({ language = 'zh', query = '', expandedSections = new Set(['intro', 'quick-start']), expandedEntries = new Set(), searchFolds = new Map() } = {}) {
     const lang = guide.languageKey(language);
     const labels = strings[lang];
     const sections = guide.searchGuide(query, lang);
@@ -57,7 +75,7 @@
 
   function createGuideUi({ document, getLanguage, getPackage, copyText, openSource }) {
     let query = '';
-    const expandedSections = new Set(['quick-start']);
+    const expandedSections = new Set(['intro', 'quick-start']);
     const expandedEntries = new Set();
     const searchFolds = new Map();
     const $ = id => document.getElementById(id);
