@@ -1,23 +1,28 @@
 'use strict';
 // Builds the Windows icon from the source artwork.
 //
+// The artwork is assets/logo.png — the same purple Aurora mark the sidebar and
+// the README use, so the taskbar, the tray and the installer all carry one
+// brand instead of three.
+//
 // Two things the artwork needs before it can pass for a real app icon:
-//   1. It is 1278x1230 — not square — and Windows would stretch it.
-//   2. It only fills ~82% of its canvas; the rest is transparent margin, which
-//      is why it looked noticeably smaller in the taskbar than Chrome or
-//      qBittorrent. The transparent border is trimmed so the badge fills the
-//      icon edge to edge, the way other app icons do.
+//   1. It is not necessarily square — Windows would stretch it.
+//   2. It may carry transparent margin, which makes the badge look noticeably
+//      smaller in the taskbar than Chrome or qBittorrent. The transparent
+//      border is trimmed so the badge fills the icon edge to edge, the way
+//      other app icons do.
 //
 // The .ico is assembled here rather than left to the packager, so every size
 // Windows asks for is a separate high-quality downscale of the full-bleed art.
 //
 // Run with:  npm run icon
+// Override the source with:  node scripts/make-icon.js <path-to.png>
 const { app, nativeImage } = require('electron');
 const fs = require('fs');
 const path = require('path');
 
 const ROOT = path.resolve(__dirname, '..');
-const SOURCE = process.argv[2] || path.join(ROOT, 'app_iocn.png');
+const SOURCE = process.argv[2] || path.join(ROOT, 'assets', 'logo.png');
 const OUT_DIR = path.join(ROOT, 'build');
 const ICO_SIZES = [16, 24, 32, 48, 64, 128, 256];
 

@@ -154,7 +154,7 @@ npm start
 打包 Windows 便携版：
 
 ```bash
-npm run icon          # 由 app_iocn.png 生成 build/icon.ico，仓库里不含该文件
+npm run icon          # 由 assets/logo.png 生成 build/icon.ico，仓库里不含该文件
 npm run build:portable
 ```
 

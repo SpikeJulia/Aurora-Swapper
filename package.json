@@ -65,7 +65,7 @@
       ],
       "category": "Game",
       "maintainer": "spikejulia",
-      "icon": "app_iocn.png",
+      "icon": "assets/logo.png",
       "artifactName": "Aurora-Swapper-${version}-${arch}.${ext}"
     },
     "compression": "maximum",

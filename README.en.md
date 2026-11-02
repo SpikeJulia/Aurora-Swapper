@@ -154,7 +154,7 @@ npm start
 Build the Windows portable executable:
 
 ```bash
-npm run icon          # turns app_iocn.png into build/icon.ico; the .ico is not in the repository
+npm run icon          # turns assets/logo.png into build/icon.ico; the .ico is not in the repository
 npm run build:portable
 ```
 
